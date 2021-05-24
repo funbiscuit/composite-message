@@ -94,6 +94,19 @@ SCENARIO("Write message", "[write]") {
                 REQUIRE(((int8_t *) buffer.data())[3] == i);
             }
         }
+
+        WHEN("UInt8 is written") {
+            uint8_t i = GENERATE(0, 127, 255);
+            cmWriteU8(writer, i);
+
+            THEN("UInt8 flag is placed after 2nd byte") {
+                REQUIRE(buffer[2] == 0x02);
+            }
+
+            AND_THEN("UInt8 is placed after 3rd byte") {
+                REQUIRE(buffer[3] == i);
+            }
+        }
     }
 
     GIVEN("Writer with not enough space") {
@@ -132,6 +145,24 @@ SCENARIO("Read message", "[read]") {
             }
 
             AND_THEN("Read int8 is correct") {
+                REQUIRE(i == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with uint8") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        uint8_t i = GENERATE(0, 127, 255);
+        cmWriteU8(writer, i);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("UInt8 is read") {
+            auto r = cmReadU8(reader);
+
+            AND_THEN("Read uint8 is correct") {
                 REQUIRE(i == r);
             }
         }

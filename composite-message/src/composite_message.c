@@ -19,6 +19,24 @@
 static CompositeMessageWriter staticWriter;
 static CompositeMessageReader staticReader;
 
+
+/**
+ * Ensures that current writer has enough space to write 'size' bytes
+ * @param writer
+ * @param size
+ * @return true if there is enough space
+ */
+static bool ensureSpace(CompositeMessageWriter *writer, uint8_t size);
+
+/**
+ * Check if there is value of specified type and size at current position
+ * @param type
+ * @param size
+ * @return true if value is present
+ */
+static bool checkValue(CompositeMessageReader *reader,
+                       uint8_t type, uint8_t size);
+
 CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size) {
     staticWriter.buffer = (uint8_t *) buffer;
     staticWriter.bufferSize = size;
@@ -51,32 +69,67 @@ CompositeMessageReader *cmGetStaticReader(const void *message, uint32_t size) {
 }
 
 void cmWriteI8(CompositeMessageWriter *writer, int8_t i) {
-    if (writer->firstError != CM_ERROR_NONE)
+    if (!ensureSpace(writer, 2))
         return;
-
-    if (writer->bufferSize - writer->usedSize < 2) {
-        writer->firstError = CM_ERROR_NO_SPACE;
-        return;
-    }
 
     writer->buffer[writer->usedSize] = CM_INT8;
-    writer->buffer[writer->usedSize + 1] = i;
+    *(int8_t *) &writer->buffer[writer->usedSize + 1] = i;
 
     writer->usedSize += 2;
 }
 
 int8_t cmReadI8(CompositeMessageReader *reader) {
-    if (reader->firstError != CM_ERROR_NONE)
+    if (!checkValue(reader, CM_INT8, 1))
         return 0;
 
-    if (reader->readSize + 2 > reader->totalSize ||
-        reader->message[reader->readSize] != CM_INT8) {
-        reader->firstError = CM_ERROR_NO_VALUE;
+    int8_t i = *(int8_t *) &reader->message[reader->readSize + 1];
+
+    reader->readSize += 2;
+    return i;
+}
+
+void cmWriteU8(CompositeMessageWriter *writer, uint8_t i) {
+    if (!ensureSpace(writer, 2))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_UINT8;
+    writer->buffer[writer->usedSize + 1] = i;
+
+    writer->usedSize += 2;
+}
+
+uint8_t cmReadU8(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_UINT8, 1))
         return 0;
-    }
 
     uint8_t i = reader->message[reader->readSize + 1];
 
     reader->readSize += 2;
     return i;
+}
+
+static bool ensureSpace(CompositeMessageWriter *writer, uint8_t size) {
+    if (writer->firstError != CM_ERROR_NONE)
+        return false;
+
+    if (writer->bufferSize - writer->usedSize < size) {
+        writer->firstError = CM_ERROR_NO_SPACE;
+        return false;
+    }
+
+    return true;
+}
+
+static bool checkValue(CompositeMessageReader *reader,
+                       uint8_t type, uint8_t size) {
+    if (reader->firstError != CM_ERROR_NONE)
+        return false;
+
+    if (reader->readSize + 1 + size > reader->totalSize ||
+        reader->message[reader->readSize] != type) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return false;
+    }
+
+    return true;
 }

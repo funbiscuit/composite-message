@@ -144,6 +144,10 @@ void cmWriteI8(CompositeMessageWriter *writer, int8_t i);
  */
 int8_t cmReadI8(CompositeMessageReader *reader);
 
+void cmWriteU8(CompositeMessageWriter *writer, uint8_t i);
+
+uint8_t cmReadU8(CompositeMessageReader *reader);
+
 #ifdef __cplusplus
 }
 #endif
