@@ -11,6 +11,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Checkout submodules
+        uses: textbook/git-checkout-submodule-action@master
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build
