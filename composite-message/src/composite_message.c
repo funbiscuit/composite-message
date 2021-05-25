@@ -1,5 +1,7 @@
 #include "composite_message.h"
 
+#include <string.h>
+
 #define CM_INT8     0x1
 #define CM_UINT8    0x2
 #define CM_INT16    0x3
@@ -26,7 +28,7 @@ static CompositeMessageReader staticReader;
  * @param size
  * @return true if there is enough space
  */
-static bool ensureSpace(CompositeMessageWriter *writer, uint8_t size);
+static bool ensureSpace(CompositeMessageWriter *writer, uint32_t size);
 
 /**
  * Check if there is value of specified type and size at current position
@@ -36,6 +38,23 @@ static bool ensureSpace(CompositeMessageWriter *writer, uint8_t size);
  */
 static bool checkValue(CompositeMessageReader *reader,
                        uint8_t type, uint8_t size);
+
+/**
+ * Write array of bytes directly into message
+ * Writer must have enough space in its internal buffer
+ * @param writer
+ * @param data
+ * @param size
+ */
+static bool writeBytes(CompositeMessageWriter *writer,
+                       const void *data, uint32_t size);
+
+/**
+ * Inverse byte order in given array
+ * @param data
+ * @param size
+ */
+static void inverseByteOrder(void *data, uint8_t size);
 
 CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size) {
     staticWriter.buffer = (uint8_t *) buffer;
@@ -108,7 +127,51 @@ uint8_t cmReadU8(CompositeMessageReader *reader) {
     return i;
 }
 
-static bool ensureSpace(CompositeMessageWriter *writer, uint8_t size) {
+void cmWriteI32(CompositeMessageWriter *writer, int32_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(int32_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_INT32;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(int32_t));
+}
+
+int32_t cmReadI32(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_INT32, sizeof(int32_t)))
+        return 0;
+
+    int32_t i = *(int32_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(int32_t));
+
+    reader->readSize += 1 + sizeof(int32_t);
+    return i;
+}
+
+void cmWriteU32(CompositeMessageWriter *writer, uint32_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(uint32_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_UINT32;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(uint32_t));
+}
+
+uint32_t cmReadU32(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_UINT32, sizeof(uint32_t)))
+        return 0;
+
+    uint32_t i = *(uint32_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(uint32_t));
+
+    reader->readSize += 1 + sizeof(uint32_t);
+    return i;
+}
+
+static bool ensureSpace(CompositeMessageWriter *writer, uint32_t size) {
     if (writer->firstError != CM_ERROR_NONE)
         return false;
 
@@ -132,4 +195,23 @@ static bool checkValue(CompositeMessageReader *reader,
     }
 
     return true;
+}
+
+static bool writeBytes(CompositeMessageWriter *writer,
+                       const void *data, uint32_t size) {
+    if (!ensureSpace(writer, size))
+        return false;
+
+    memcpy(&writer->buffer[writer->usedSize], data, size);
+    writer->usedSize += size;
+    return true;
+}
+
+static void inverseByteOrder(void *data, uint8_t size) {
+    uint8_t *d = (uint8_t *) data;
+    for (uint8_t i = 0; i < size / 2; ++i) {
+        uint8_t t = d[size - i - 1];
+        d[size - i - 1] = d[i];
+        d[i] = t;
+    }
 }

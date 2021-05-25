@@ -148,6 +148,14 @@ void cmWriteU8(CompositeMessageWriter *writer, uint8_t i);
 
 uint8_t cmReadU8(CompositeMessageReader *reader);
 
+void cmWriteI32(CompositeMessageWriter *writer, int32_t i);
+
+int32_t cmReadI32(CompositeMessageReader *reader);
+
+void cmWriteU32(CompositeMessageWriter *writer, uint32_t i);
+
+uint32_t cmReadU32(CompositeMessageReader *reader);
+
 #ifdef __cplusplus
 }
 #endif

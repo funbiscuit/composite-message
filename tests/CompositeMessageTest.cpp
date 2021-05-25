@@ -14,7 +14,7 @@ SCENARIO("Reader and writer creation", "[create]") {
         WHEN("Reader is created from message without endianness") {
             auto reader = cmGetStaticReader(buffer.data(), buffer.size());
 
-            AND_THEN("Endianness errors") {
+            THEN("Endianness errors") {
                 REQUIRE(reader->firstError == CM_ERROR_NO_ENDIAN);
             }
         }
@@ -25,7 +25,7 @@ SCENARIO("Reader and writer creation", "[create]") {
 
             auto reader = cmGetStaticReader(buffer.data(), buffer.size());
 
-            AND_THEN("No errors") {
+            THEN("No errors") {
                 REQUIRE(reader->firstError == CM_ERROR_NONE);
             }
 
@@ -44,7 +44,7 @@ SCENARIO("Reader and writer creation", "[create]") {
 
             auto reader = cmGetStaticReader(buffer.data(), buffer.size());
 
-            AND_THEN("No errors") {
+            THEN("No errors") {
                 REQUIRE(reader->firstError == CM_ERROR_NONE);
             }
 
@@ -56,7 +56,7 @@ SCENARIO("Reader and writer creation", "[create]") {
         WHEN("Writer is created") {
             auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
 
-            AND_THEN("No errors") {
+            THEN("No errors") {
                 REQUIRE(writer->firstError == CM_ERROR_NONE);
             }
 
@@ -105,6 +105,19 @@ SCENARIO("Write message", "[write]") {
 
             AND_THEN("UInt8 is placed after 3rd byte") {
                 REQUIRE(buffer[3] == i);
+            }
+        }
+
+        WHEN("Int32 is written") {
+            int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
+            cmWriteI32(writer, i);
+
+            THEN("Int32 flag is placed after 2nd byte") {
+                REQUIRE(buffer[2] == 0x05);
+            }
+
+            AND_THEN("Int32 is placed after 3rd byte") {
+                REQUIRE(*(int32_t *) &buffer[3] == i);
             }
         }
     }
@@ -162,7 +175,73 @@ SCENARIO("Read message", "[read]") {
         WHEN("UInt8 is read") {
             auto r = cmReadU8(reader);
 
-            AND_THEN("Read uint8 is correct") {
+            THEN("Read uint8 is correct") {
+                REQUIRE(i == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with int32") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
+        cmWriteI32(writer, i);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Int32 is read") {
+            auto r = cmReadI32(reader);
+
+            THEN("No errors") {
+                REQUIRE(reader->firstError == CM_ERROR_NONE);
+            }
+
+            AND_THEN("Read int32 is correct") {
+                REQUIRE(i == r);
+            }
+        }
+    }
+
+
+    GIVEN("Non-empty message with uint32") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        uint32_t i = GENERATE(0, INT32_MAX, UINT32_MAX);
+        cmWriteU32(writer, i);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("UInt32 is read") {
+            auto r = cmReadU32(reader);
+
+            THEN("Read uint32 is correct") {
+                REQUIRE(i == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with int32 in inverse endian mode") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
+        cmWriteI32(writer, i);
+        std::swap(buffer[0], buffer[1]);
+        std::swap(buffer[3], buffer[6]);
+        std::swap(buffer[4], buffer[5]);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Int32 is read") {
+            auto r = cmReadI32(reader);
+
+            THEN("No errors") {
+                REQUIRE(reader->firstError == CM_ERROR_NONE);
+            }
+
+            AND_THEN("Read int32 is correct") {
                 REQUIRE(i == r);
             }
         }
