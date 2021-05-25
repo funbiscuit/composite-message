@@ -203,7 +203,6 @@ SCENARIO("Read message", "[read]") {
         }
     }
 
-
     GIVEN("Non-empty message with uint32") {
         std::vector<uint8_t> buffer(1024);
         auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
@@ -218,6 +217,42 @@ SCENARIO("Read message", "[read]") {
 
             THEN("Read uint32 is correct") {
                 REQUIRE(i == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with float") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        float f = GENERATE(FLT_MIN, 1.f, FLT_MAX);
+        cmWriteF(writer, f);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Float is read") {
+            auto r = cmReadF(reader);
+
+            THEN("Read value is correct") {
+                REQUIRE(f == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with double") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        double d = GENERATE(DBL_MIN, 1.0, DBL_MAX);
+        cmWriteD(writer, d);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Double is read") {
+            auto r = cmReadD(reader);
+
+            THEN("Read value is correct") {
+                REQUIRE(d == r);
             }
         }
     }

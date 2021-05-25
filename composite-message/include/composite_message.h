@@ -156,6 +156,14 @@ void cmWriteU32(CompositeMessageWriter *writer, uint32_t i);
 
 uint32_t cmReadU32(CompositeMessageReader *reader);
 
+void cmWriteF(CompositeMessageWriter *writer, float f);
+
+float cmReadF(CompositeMessageReader *reader);
+
+void cmWriteD(CompositeMessageWriter *writer, double d);
+
+double cmReadD(CompositeMessageReader *reader);
+
 #ifdef __cplusplus
 }
 #endif

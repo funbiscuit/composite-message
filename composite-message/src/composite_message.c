@@ -171,6 +171,50 @@ uint32_t cmReadU32(CompositeMessageReader *reader) {
     return i;
 }
 
+void cmWriteF(CompositeMessageWriter *writer, float f) {
+    if (!ensureSpace(writer, 1 + sizeof(float)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_FLOAT;
+    writer->usedSize++;
+    writeBytes(writer, &f, sizeof(float));
+}
+
+float cmReadF(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_FLOAT, sizeof(float)))
+        return 0.f;
+
+    float f = *(float *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&f, sizeof(float));
+
+    reader->readSize += 1 + sizeof(float);
+    return f;
+}
+
+void cmWriteD(CompositeMessageWriter *writer, double d) {
+    if (!ensureSpace(writer, 1 + sizeof(double)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_DOUBLE;
+    writer->usedSize++;
+    writeBytes(writer, &d, sizeof(double));
+}
+
+double cmReadD(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_DOUBLE, sizeof(double)))
+        return 0.0;
+
+    double d = *(double *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&d, sizeof(double));
+
+    reader->readSize += 1 + sizeof(double);
+    return d;
+}
+
 static bool ensureSpace(CompositeMessageWriter *writer, uint32_t size) {
     if (writer->firstError != CM_ERROR_NONE)
         return false;
