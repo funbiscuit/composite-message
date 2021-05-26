@@ -164,38 +164,38 @@ SCENARIO("Read message", "[read]") {
         }
     }
 
-    GIVEN("Non-empty message with uint8") {
+    GIVEN("Non-empty message with different integers") {
         std::vector<uint8_t> buffer(1024);
         auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
 
-        uint8_t i = GENERATE(0, 127, 255);
-        cmWriteU8(writer, i);
+        int8_t i1 = GENERATE(INT8_MIN, INT8_MAX);
+        uint8_t i2 = UINT8_MAX;
+        int16_t i3 = GENERATE(INT16_MIN, INT16_MAX);
+        uint16_t i4 = UINT16_MAX;
+        int32_t i5 = GENERATE(INT32_MIN, INT32_MAX);
+        uint32_t i6 = UINT16_MAX;
+        int64_t i7 = GENERATE(INT64_MIN, INT64_MAX);
+        uint64_t i8 = UINT64_MAX;
+        cmWriteI8(writer, i1);
+        cmWriteU8(writer, i2);
+        cmWriteI16(writer, i3);
+        cmWriteU16(writer, i4);
+        cmWriteI32(writer, i5);
+        cmWriteU32(writer, i6);
+        cmWriteI64(writer, i7);
+        cmWriteU64(writer, i8);
 
         auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
 
-        WHEN("UInt8 is read") {
-            auto r = cmReadU8(reader);
-
-            THEN("Read uint8 is correct") {
-                REQUIRE(i == r);
-            }
-        }
-    }
-
-    GIVEN("Non-empty message with int16 and uint16") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
-        int16_t i1 = GENERATE(INT16_MIN, 0, INT16_MAX);
-        uint16_t i2 = GENERATE(0, INT16_MAX, UINT16_MAX);
-        cmWriteI16(writer, i1);
-        cmWriteU16(writer, i2);
-
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
-
-        WHEN("Int16 and uint16 are read") {
-            auto r1 = cmReadI16(reader);
-            auto r2 = cmReadU16(reader);
+        WHEN("Values are read") {
+            auto r1 = cmReadI8(reader);
+            auto r2 = cmReadU8(reader);
+            auto r3 = cmReadI16(reader);
+            auto r4 = cmReadU16(reader);
+            auto r5 = cmReadI32(reader);
+            auto r6 = cmReadU32(reader);
+            auto r7 = cmReadI64(reader);
+            auto r8 = cmReadU64(reader);
 
             THEN("No errors") {
                 REQUIRE(reader->firstError == CM_ERROR_NONE);
@@ -204,108 +204,34 @@ SCENARIO("Read message", "[read]") {
             AND_THEN("Read values are correct") {
                 REQUIRE(i1 == r1);
                 REQUIRE(i2 == r2);
+                REQUIRE(i3 == r3);
+                REQUIRE(i4 == r4);
+                REQUIRE(i5 == r5);
+                REQUIRE(i6 == r6);
+                REQUIRE(i7 == r7);
+                REQUIRE(i8 == r8);
             }
         }
     }
 
-    GIVEN("Non-empty message with int32") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
-        int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
-        cmWriteI32(writer, i);
-
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
-
-        WHEN("Int32 is read") {
-            auto r = cmReadI32(reader);
-
-            THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
-            }
-
-            AND_THEN("Read int32 is correct") {
-                REQUIRE(i == r);
-            }
-        }
-    }
-
-    GIVEN("Non-empty message with uint32") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
-        uint32_t i = GENERATE(0, INT32_MAX, UINT32_MAX);
-        cmWriteU32(writer, i);
-
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
-
-        WHEN("UInt32 is read") {
-            auto r = cmReadU32(reader);
-
-            THEN("Read uint32 is correct") {
-                REQUIRE(i == r);
-            }
-        }
-    }
-
-    GIVEN("Non-empty message with int64 and uint64") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
-        int64_t i1 = GENERATE(INT64_MIN, 0, INT64_MAX);
-        uint64_t i2 = GENERATE(0, INT64_MAX, UINT64_MAX);
-        cmWriteI64(writer, i1);
-        cmWriteU64(writer, i2);
-
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
-
-        WHEN("Int64 and uint64 are read") {
-            auto r1 = cmReadI64(reader);
-            auto r2 = cmReadU64(reader);
-
-            THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
-            }
-
-            AND_THEN("Read values are correct") {
-                REQUIRE(i1 == r1);
-                REQUIRE(i2 == r2);
-            }
-        }
-    }
-
-    GIVEN("Non-empty message with float") {
+    GIVEN("Non-empty message with float/double value") {
         std::vector<uint8_t> buffer(1024);
         auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
 
         float f = GENERATE(FLT_MIN, 1.f, FLT_MAX);
-        cmWriteF(writer, f);
-
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
-
-        WHEN("Float is read") {
-            auto r = cmReadF(reader);
-
-            THEN("Read value is correct") {
-                REQUIRE(f == r);
-            }
-        }
-    }
-
-    GIVEN("Non-empty message with double") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
         double d = GENERATE(DBL_MIN, 1.0, DBL_MAX);
+        cmWriteF(writer, f);
         cmWriteD(writer, d);
 
         auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
 
-        WHEN("Double is read") {
-            auto r = cmReadD(reader);
+        WHEN("Float and double values are read") {
+            auto r1 = cmReadF(reader);
+            auto r2 = cmReadD(reader);
 
-            THEN("Read value is correct") {
-                REQUIRE(d == r);
+            THEN("Read values are correct") {
+                REQUIRE(f == r1);
+                REQUIRE(d == r2);
             }
         }
     }
