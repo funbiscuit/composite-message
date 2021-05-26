@@ -4,6 +4,7 @@
 #include <catch2/generators/catch_generators_all.hpp>
 
 #include <vector>
+#include <cfloat>
 
 SCENARIO("Reader and writer creation", "[create]") {
     GIVEN("Non empty buffer") {
