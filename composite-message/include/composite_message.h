@@ -180,6 +180,10 @@ void cmWriteD(CompositeMessageWriter *writer, double d);
 
 double cmReadD(CompositeMessageReader *reader);
 
+void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver);
+
+uint32_t cmReadVersion(CompositeMessageReader *writer);
+
 #ifdef __cplusplus
 }
 #endif

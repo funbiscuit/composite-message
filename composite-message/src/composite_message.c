@@ -15,6 +15,8 @@
 #define CM_FLOAT    0xB
 #define CM_DOUBLE   0xC
 
+#define CM_VERSION   0x83
+
 #define ENDIAN_MARK     0x0709
 #define ENDIAN_INV_MARK 0x0907
 
@@ -303,6 +305,27 @@ double cmReadD(CompositeMessageReader *reader) {
 
     reader->readSize += 1 + sizeof(double);
     return d;
+}
+
+void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver) {
+    cmWriteU32(writer, ver);
+
+    if (writer->firstError == CM_ERROR_NONE) {
+        writer->buffer[writer->usedSize - sizeof(uint32_t) - 1] = CM_VERSION;
+    }
+}
+
+uint32_t cmReadVersion(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_VERSION, sizeof(uint32_t)))
+        return 0;
+
+    uint32_t i = *(uint32_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(uint32_t));
+
+    reader->readSize += 1 + sizeof(uint32_t);
+    return i;
 }
 
 static bool ensureSpace(CompositeMessageWriter *writer, uint32_t size) {

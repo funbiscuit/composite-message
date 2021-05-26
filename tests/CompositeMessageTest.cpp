@@ -275,3 +275,24 @@ SCENARIO("Read message", "[read]") {
         }
     }
 }
+
+SCENARIO("Read message with extras", "[read]") {
+
+    GIVEN("Non-empty message with version") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        uint32_t ver = GENERATE(157, 157157, UINT32_MAX);
+        cmWriteVersion(writer, ver);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Version is read") {
+            auto r = cmReadVersion(reader);
+
+            THEN("Read value is correct") {
+                REQUIRE(r == ver);
+            }
+        }
+    }
+}
