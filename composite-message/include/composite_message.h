@@ -148,6 +148,14 @@ void cmWriteU8(CompositeMessageWriter *writer, uint8_t i);
 
 uint8_t cmReadU8(CompositeMessageReader *reader);
 
+void cmWriteI16(CompositeMessageWriter *writer, int16_t i);
+
+int16_t cmReadI16(CompositeMessageReader *reader);
+
+void cmWriteU16(CompositeMessageWriter *writer, uint16_t i);
+
+uint16_t cmReadU16(CompositeMessageReader *reader);
+
 void cmWriteI32(CompositeMessageWriter *writer, int32_t i);
 
 int32_t cmReadI32(CompositeMessageReader *reader);
@@ -155,6 +163,14 @@ int32_t cmReadI32(CompositeMessageReader *reader);
 void cmWriteU32(CompositeMessageWriter *writer, uint32_t i);
 
 uint32_t cmReadU32(CompositeMessageReader *reader);
+
+void cmWriteI64(CompositeMessageWriter *writer, int64_t i);
+
+int64_t cmReadI64(CompositeMessageReader *reader);
+
+void cmWriteU64(CompositeMessageWriter *writer, uint64_t i);
+
+uint64_t cmReadU64(CompositeMessageReader *reader);
 
 void cmWriteF(CompositeMessageWriter *writer, float f);
 

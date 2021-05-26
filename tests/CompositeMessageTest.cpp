@@ -182,6 +182,32 @@ SCENARIO("Read message", "[read]") {
         }
     }
 
+    GIVEN("Non-empty message with int16 and uint16") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        int16_t i1 = GENERATE(INT16_MIN, 0, INT16_MAX);
+        uint16_t i2 = GENERATE(0, INT16_MAX, UINT16_MAX);
+        cmWriteI16(writer, i1);
+        cmWriteU16(writer, i2);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Int16 and uint16 are read") {
+            auto r1 = cmReadI16(reader);
+            auto r2 = cmReadU16(reader);
+
+            THEN("No errors") {
+                REQUIRE(reader->firstError == CM_ERROR_NONE);
+            }
+
+            AND_THEN("Read values are correct") {
+                REQUIRE(i1 == r1);
+                REQUIRE(i2 == r2);
+            }
+        }
+    }
+
     GIVEN("Non-empty message with int32") {
         std::vector<uint8_t> buffer(1024);
         auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
@@ -218,6 +244,32 @@ SCENARIO("Read message", "[read]") {
 
             THEN("Read uint32 is correct") {
                 REQUIRE(i == r);
+            }
+        }
+    }
+
+    GIVEN("Non-empty message with int64 and uint64") {
+        std::vector<uint8_t> buffer(1024);
+        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+
+        int64_t i1 = GENERATE(INT64_MIN, 0, INT64_MAX);
+        uint64_t i2 = GENERATE(0, INT64_MAX, UINT64_MAX);
+        cmWriteI64(writer, i1);
+        cmWriteU64(writer, i2);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Int64 and uint64 are read") {
+            auto r1 = cmReadI64(reader);
+            auto r2 = cmReadU64(reader);
+
+            THEN("No errors") {
+                REQUIRE(reader->firstError == CM_ERROR_NONE);
+            }
+
+            AND_THEN("Read values are correct") {
+                REQUIRE(i1 == r1);
+                REQUIRE(i2 == r2);
             }
         }
     }

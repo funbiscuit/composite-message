@@ -127,6 +127,50 @@ uint8_t cmReadU8(CompositeMessageReader *reader) {
     return i;
 }
 
+void cmWriteI16(CompositeMessageWriter *writer, int16_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(int16_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_INT16;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(int16_t));
+}
+
+int16_t cmReadI16(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_INT16, sizeof(int16_t)))
+        return 0;
+
+    int16_t i = *(int16_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(int16_t));
+
+    reader->readSize += 1 + sizeof(int16_t);
+    return i;
+}
+
+void cmWriteU16(CompositeMessageWriter *writer, uint16_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(uint16_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_UINT16;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(uint16_t));
+}
+
+uint16_t cmReadU16(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_UINT16, sizeof(uint16_t)))
+        return 0;
+
+    uint16_t i = *(uint16_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(uint16_t));
+
+    reader->readSize += 1 + sizeof(uint16_t);
+    return i;
+}
+
 void cmWriteI32(CompositeMessageWriter *writer, int32_t i) {
     if (!ensureSpace(writer, 1 + sizeof(int32_t)))
         return;
@@ -170,6 +214,52 @@ uint32_t cmReadU32(CompositeMessageReader *reader) {
     reader->readSize += 1 + sizeof(uint32_t);
     return i;
 }
+
+void cmWriteI64(CompositeMessageWriter *writer, int64_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(int64_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_INT64;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(int64_t));
+}
+
+int64_t cmReadI64(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_INT64, sizeof(int64_t)))
+        return 0;
+
+    int64_t i = *(int64_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(int64_t));
+
+    reader->readSize += 1 + sizeof(int64_t);
+    return i;
+}
+
+
+void cmWriteU64(CompositeMessageWriter *writer, uint64_t i) {
+    if (!ensureSpace(writer, 1 + sizeof(uint64_t)))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_UINT64;
+    writer->usedSize++;
+    writeBytes(writer, &i, sizeof(uint64_t));
+}
+
+uint64_t cmReadU64(CompositeMessageReader *reader) {
+    if (!checkValue(reader, CM_UINT64, sizeof(uint64_t)))
+        return 0;
+
+    uint64_t i = *(uint64_t *) &reader->message[reader->readSize + 1];
+
+    if (!reader->endianMatch)
+        inverseByteOrder(&i, sizeof(uint64_t));
+
+    reader->readSize += 1 + sizeof(uint64_t);
+    return i;
+}
+
 
 void cmWriteF(CompositeMessageWriter *writer, float f) {
     if (!ensureSpace(writer, 1 + sizeof(float)))
