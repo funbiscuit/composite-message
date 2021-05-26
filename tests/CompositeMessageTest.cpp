@@ -138,10 +138,10 @@ SCENARIO("Write message", "[write]") {
 }
 
 SCENARIO("Read message", "[read]") {
-    GIVEN("Non-empty message with int8") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+    std::vector<uint8_t> buffer(1024);
+    auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
 
+    GIVEN("Non-empty message with int8") {
         int8_t i = GENERATE(-128, 5, 127);
         cmWriteI8(writer, i);
 
@@ -165,9 +165,6 @@ SCENARIO("Read message", "[read]") {
     }
 
     GIVEN("Non-empty message with different integers") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
         int8_t i1 = GENERATE(INT8_MIN, INT8_MAX);
         uint8_t i2 = UINT8_MAX;
         int16_t i3 = GENERATE(INT16_MIN, INT16_MAX);
@@ -215,9 +212,6 @@ SCENARIO("Read message", "[read]") {
     }
 
     GIVEN("Non-empty message with float/double value") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
         float f = GENERATE(FLT_MIN, 1.f, FLT_MAX);
         double d = GENERATE(DBL_MIN, 1.0, DBL_MAX);
         cmWriteF(writer, f);
@@ -237,9 +231,6 @@ SCENARIO("Read message", "[read]") {
     }
 
     GIVEN("Non-empty message with int32 in inverse endian mode") {
-        std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
-
         int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
         cmWriteI32(writer, i);
         std::swap(buffer[0], buffer[1]);
@@ -262,8 +253,8 @@ SCENARIO("Read message", "[read]") {
     }
 
     GIVEN("Message without data") {
-        std::vector<uint8_t> buffer(2);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+        buffer.resize(2);
+        writer = cmGetStaticWriter(buffer.data(), buffer.size());
         auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
 
         WHEN("Int8 is read") {
