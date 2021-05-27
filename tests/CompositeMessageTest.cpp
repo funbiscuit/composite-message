@@ -1,6 +1,7 @@
 #include "composite_message.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_all.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 
 #include <vector>
@@ -226,6 +227,55 @@ SCENARIO("Read message", "[read]") {
             THEN("Read values are correct") {
                 REQUIRE(f == r1);
                 REQUIRE(d == r2);
+            }
+        }
+    }
+
+    GIVEN("Message with arrays") {
+        std::vector<uint8_t> dataU8{0, 123, 17, 255};
+        std::vector<uint32_t> dataU32{0, 123, 17, UINT32_MAX, 234};
+        // emulate 16 byte data by pairs of u64
+        std::vector<uint64_t> dataU128{0, 11, 31, UINT64_MAX, 234, 57};
+
+        cmWriteArray(writer, dataU8.data(), dataU8.size(), sizeof(uint8_t));
+        cmWriteArray(writer, dataU32.data(), dataU32.size(), sizeof(uint32_t));
+        cmWriteArray(writer, dataU128.data(), dataU128.size() / 2, sizeof(uint64_t) * 2);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Array size is peeked") {
+            auto size = cmPeekArraySize(reader);
+
+            THEN("Size is correct") {
+                REQUIRE(size == dataU8.size());
+            }
+
+            AND_THEN("Size can be peeked again") {
+                size = cmPeekArraySize(reader);
+                REQUIRE(size == dataU8.size());
+            }
+        }
+
+        WHEN("Arrays are read") {
+            std::vector<uint8_t> readU8(32);
+            std::vector<uint32_t> readU32(32);
+            std::vector<uint64_t> readU128(32);
+
+            auto size = cmReadArray(reader, readU8.data(), readU8.size(), sizeof(uint8_t));
+            readU8.resize(size);
+            size = cmReadArray(reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            readU32.resize(size);
+            size = cmReadArray(reader, readU128.data(), readU128.size() / 2, sizeof(uint64_t) * 2);
+            readU128.resize(size * 2);
+
+            THEN("No errors") {
+                REQUIRE(reader->firstError == CM_ERROR_NONE);
+            }
+
+            AND_THEN("Read arrays are correct") {
+                REQUIRE_THAT(readU8, Catch::Matchers::Equals(dataU8));
+                REQUIRE_THAT(readU32, Catch::Matchers::Equals(dataU32));
+                REQUIRE_THAT(readU128, Catch::Matchers::Equals(dataU128));
             }
         }
     }

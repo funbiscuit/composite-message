@@ -46,6 +46,7 @@
 #define CM_ERROR_NO_ENDIAN 1
 #define CM_ERROR_NO_SPACE 2
 #define CM_ERROR_NO_VALUE 3
+#define CM_ERROR_INVALID_ARG 4
 
 #ifdef __cplusplus
 
@@ -180,9 +181,49 @@ void cmWriteD(CompositeMessageWriter *writer, double d);
 
 double cmReadD(CompositeMessageReader *reader);
 
+/**
+ * Write array of values. Each value can be up to 16 bytes long
+ * If buffer can't hold array of this size
+ * firstError is set to CM_ERROR_NO_SPACE
+ * If itemSize is 0 or greater than 16, firstError is set to CM_ERROR_INVALID_ARG
+ * @param writer
+ * @param data
+ * @param itemCount how many items are in data array
+ * @param itemSize size of each item (maximum 16 bytes)
+ */
+void cmWriteArray(CompositeMessageWriter *writer,
+                  const void *data, uint32_t itemCount, uint8_t itemSize);
+
+/**
+ * Read array of values into provided buffer. Each value can be up to 16 bytes
+ * If next element is not an array, firstError is set to CM_ERROR_NO_VALUE
+ * If provided buffer is insufficient to store array, firstError
+ * is set to CM_ERROR_NO_SPACE
+ * If itemSize is 0 or greater than 16, firstError is set to CM_ERROR_INVALID_ARG
+ * If actual array in message has different item size, firstError
+ * is set to CM_ERROR_INVALID_ARG
+ * If read is successful, size of read array is returned
+ * @param reader
+ * @param buffer
+ * @param maxItems how many items buffer can store
+ * @param itemSize size of each item (maximum 16 bytes)
+ * @return
+ */
+uint32_t cmReadArray(CompositeMessageReader *reader,
+                     void *buffer, uint32_t maxItems, uint8_t itemSize);
+
+/**
+ * Read size of next array. This function doesn't change state of
+ * reader if next element is array so it can be called multiple times.
+ * If next element is not array, firstError is set to CM_ERROR_NO_VALUE
+ * @param writer
+ * @return
+ */
+uint32_t cmPeekArraySize(CompositeMessageReader *reader);
+
 void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver);
 
-uint32_t cmReadVersion(CompositeMessageReader *writer);
+uint32_t cmReadVersion(CompositeMessageReader *reader);
 
 #ifdef __cplusplus
 }

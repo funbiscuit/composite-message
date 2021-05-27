@@ -2,23 +2,26 @@
 
 #include <string.h>
 
-#define CM_INT8     0x1
-#define CM_UINT8    0x2
-#define CM_INT16    0x3
-#define CM_UINT16   0x4
-#define CM_INT32    0x5
-#define CM_UINT32   0x6
-#define CM_INT64    0x7
-#define CM_UINT64   0x8
-#define CM_BOOL     0x9
-#define CM_CHAR     0xA
-#define CM_FLOAT    0xB
-#define CM_DOUBLE   0xC
+#define CM_INT8     0x1u
+#define CM_UINT8    0x2u
+#define CM_INT16    0x3u
+#define CM_UINT16   0x4u
+#define CM_INT32    0x5u
+#define CM_UINT32   0x6u
+#define CM_INT64    0x7u
+#define CM_UINT64   0x8u
+#define CM_BOOL     0x9u
+#define CM_CHAR     0xAu
+#define CM_FLOAT    0xBu
+#define CM_DOUBLE   0xCu
 
-#define CM_VERSION   0x83
+#define CM_ARRAY    0x20u
+#define CM_ARRAY_MASK   0xF0u
 
-#define ENDIAN_MARK     0x0709
-#define ENDIAN_INV_MARK 0x0907
+#define CM_VERSION   0x83u
+
+#define ENDIAN_MARK     0x0709u
+#define ENDIAN_INV_MARK 0x0907u
 
 static CompositeMessageWriter staticWriter;
 static CompositeMessageReader staticReader;
@@ -305,6 +308,78 @@ double cmReadD(CompositeMessageReader *reader) {
 
     reader->readSize += 1 + sizeof(double);
     return d;
+}
+
+void cmWriteArray(CompositeMessageWriter *writer,
+                  const void *data, uint32_t itemCount, uint8_t itemSize) {
+    if (itemSize > 0x10 || itemSize == 0) {
+        writer->firstError = CM_ERROR_INVALID_ARG;
+        return;
+    }
+    uint8_t itemType = itemSize;
+    if (itemType == 0x10)
+        itemType = 0;
+
+    // we need to place flag (1 byte), array size (uint32) and array itself
+    if (!ensureSpace(writer, 1 + sizeof(uint32_t) + itemSize * itemCount))
+        return;
+
+    writer->buffer[writer->usedSize] = CM_ARRAY | itemType;
+    writer->usedSize++;
+    writeBytes(writer, &itemCount, sizeof(uint32_t));
+    writeBytes(writer, data, itemCount * itemSize);
+}
+
+uint32_t cmReadArray(CompositeMessageReader *reader,
+                     void *buffer, uint32_t maxItems, uint8_t itemSize) {
+    //TODO add handling of inverse endian mode
+    if (!reader->endianMatch) {
+        reader->firstError = CM_ERROR_NO_ENDIAN;
+        return 0;
+    }
+    if (itemSize > 0x10 || itemSize == 0) {
+        reader->firstError = CM_ERROR_INVALID_ARG;
+        return 0;
+    }
+    uint8_t itemType = itemSize;
+    if (itemType == 0x10)
+        itemType = 0;
+
+    uint32_t arraySize = cmPeekArraySize(reader);
+
+    if (reader->firstError != CM_ERROR_NONE)
+        return 0;
+
+    if (reader->message[reader->readSize] != (CM_ARRAY | itemType)) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return 0;
+    }
+
+    if (maxItems < arraySize) {
+        reader->firstError = CM_ERROR_NO_SPACE;
+        return 0;
+    }
+
+    reader->readSize += 1 + sizeof(uint32_t);
+    memcpy(buffer, &reader->message[reader->readSize], arraySize * itemSize);
+    reader->readSize += arraySize * itemSize;
+
+    return arraySize;
+}
+
+uint32_t cmPeekArraySize(CompositeMessageReader *reader) {
+    if (reader->firstError != CM_ERROR_NONE)
+        return 0;
+
+    if (reader->readSize + 1 + sizeof(uint32_t) > reader->totalSize ||
+        (reader->message[reader->readSize] & CM_ARRAY_MASK) != CM_ARRAY) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return 0;
+    }
+
+    uint32_t size = *(uint32_t *) &reader->message[reader->readSize + 1];
+
+    return size;
 }
 
 void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver) {
