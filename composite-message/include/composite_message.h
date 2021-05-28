@@ -82,7 +82,7 @@ typedef struct {
  * are no-op.
  */
 typedef struct {
-    const uint8_t *message;
+    uint8_t *message;
 
     /**
      * Total number of bytes in message
@@ -98,11 +98,6 @@ typedef struct {
      * First error occurred when reading bytes
      */
     uint32_t firstError;
-
-    /**
-     * Whether endianness of this system matches endianness of message
-     */
-    bool endianMatch;
 } CompositeMessageReader;
 
 /**
@@ -127,7 +122,7 @@ CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size);
  * @size size - size of message in bytes
  * @return pointer to initialized CompositeMessageReader
  */
-CompositeMessageReader *cmGetStaticReader(const void *message, uint32_t size);
+CompositeMessageReader *cmGetStaticReader(void *message, uint32_t size);
 
 /**
  * Write signed 8-bit integer to message. If buffer can't hold integer then

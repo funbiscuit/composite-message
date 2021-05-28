@@ -61,6 +61,14 @@ static bool writeBytes(CompositeMessageWriter *writer,
  */
 static void inverseByteOrder(void *data, uint8_t size);
 
+/**
+ * Convert endianness in whole message
+ * @param message
+ * @param size
+ * @return true if conversion was successful
+ */
+static bool convertEndianness(void *message, uint32_t size);
+
 CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size) {
     staticWriter.buffer = (uint8_t *) buffer;
     staticWriter.bufferSize = size;
@@ -75,19 +83,23 @@ CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size) {
     return &staticWriter;
 }
 
-CompositeMessageReader *cmGetStaticReader(const void *message, uint32_t size) {
-    const uint8_t *m = (const uint8_t *) message;
+CompositeMessageReader *cmGetStaticReader(void *message, uint32_t size) {
+    uint8_t *m = (uint8_t *) message;
     staticReader.message = m;
     staticReader.totalSize = size;
     staticReader.readSize = 0;
     staticReader.firstError = CM_ERROR_NONE;
-    staticReader.endianMatch = true;
     uint16_t e = *(uint16_t *) m;
     if (size < 2 || (e != ENDIAN_MARK && e != ENDIAN_INV_MARK)) {
         staticReader.firstError = CM_ERROR_NO_ENDIAN;
     } else {
-        staticReader.endianMatch = e == ENDIAN_MARK;
-        staticReader.readSize = 2;
+        // in case of inversed endianness, swap all groups of bytes
+        // so message can be processed in normal way
+        if (e != ENDIAN_MARK && !convertEndianness(&m[2], size - 2)) {
+            staticReader.firstError = CM_ERROR_NO_ENDIAN;
+        } else {
+            staticReader.readSize = 2;
+        }
     }
     return &staticReader;
 }
@@ -147,9 +159,6 @@ int16_t cmReadI16(CompositeMessageReader *reader) {
 
     int16_t i = *(int16_t *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(int16_t));
-
     reader->readSize += 1 + sizeof(int16_t);
     return i;
 }
@@ -168,9 +177,6 @@ uint16_t cmReadU16(CompositeMessageReader *reader) {
         return 0;
 
     uint16_t i = *(uint16_t *) &reader->message[reader->readSize + 1];
-
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(uint16_t));
 
     reader->readSize += 1 + sizeof(uint16_t);
     return i;
@@ -191,9 +197,6 @@ int32_t cmReadI32(CompositeMessageReader *reader) {
 
     int32_t i = *(int32_t *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(int32_t));
-
     reader->readSize += 1 + sizeof(int32_t);
     return i;
 }
@@ -213,9 +216,6 @@ uint32_t cmReadU32(CompositeMessageReader *reader) {
 
     uint32_t i = *(uint32_t *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(uint32_t));
-
     reader->readSize += 1 + sizeof(uint32_t);
     return i;
 }
@@ -234,9 +234,6 @@ int64_t cmReadI64(CompositeMessageReader *reader) {
         return 0;
 
     int64_t i = *(int64_t *) &reader->message[reader->readSize + 1];
-
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(int64_t));
 
     reader->readSize += 1 + sizeof(int64_t);
     return i;
@@ -258,9 +255,6 @@ uint64_t cmReadU64(CompositeMessageReader *reader) {
 
     uint64_t i = *(uint64_t *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(uint64_t));
-
     reader->readSize += 1 + sizeof(uint64_t);
     return i;
 }
@@ -281,9 +275,6 @@ float cmReadF(CompositeMessageReader *reader) {
 
     float f = *(float *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&f, sizeof(float));
-
     reader->readSize += 1 + sizeof(float);
     return f;
 }
@@ -303,9 +294,6 @@ double cmReadD(CompositeMessageReader *reader) {
 
     double d = *(double *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&d, sizeof(double));
-
     reader->readSize += 1 + sizeof(double);
     return d;
 }
@@ -316,9 +304,7 @@ void cmWriteArray(CompositeMessageWriter *writer,
         writer->firstError = CM_ERROR_INVALID_ARG;
         return;
     }
-    uint8_t itemType = itemSize;
-    if (itemType == 0x10)
-        itemType = 0;
+    uint8_t itemType = itemSize - 1;
 
     // we need to place flag (1 byte), array size (uint32) and array itself
     if (!ensureSpace(writer, 1 + sizeof(uint32_t) + itemSize * itemCount))
@@ -332,18 +318,11 @@ void cmWriteArray(CompositeMessageWriter *writer,
 
 uint32_t cmReadArray(CompositeMessageReader *reader,
                      void *buffer, uint32_t maxItems, uint8_t itemSize) {
-    //TODO add handling of inverse endian mode
-    if (!reader->endianMatch) {
-        reader->firstError = CM_ERROR_NO_ENDIAN;
-        return 0;
-    }
     if (itemSize > 0x10 || itemSize == 0) {
         reader->firstError = CM_ERROR_INVALID_ARG;
         return 0;
     }
-    uint8_t itemType = itemSize;
-    if (itemType == 0x10)
-        itemType = 0;
+    uint8_t itemType = itemSize - 1;
 
     uint32_t arraySize = cmPeekArraySize(reader);
 
@@ -396,9 +375,6 @@ uint32_t cmReadVersion(CompositeMessageReader *reader) {
 
     uint32_t i = *(uint32_t *) &reader->message[reader->readSize + 1];
 
-    if (!reader->endianMatch)
-        inverseByteOrder(&i, sizeof(uint32_t));
-
     reader->readSize += 1 + sizeof(uint32_t);
     return i;
 }
@@ -446,4 +422,55 @@ static void inverseByteOrder(void *data, uint8_t size) {
         d[size - i - 1] = d[i];
         d[i] = t;
     }
+}
+
+static bool convertEndianness(void *message, uint32_t size) {
+    uint8_t *d = (uint8_t *) message;
+    while (size > 0) {
+        uint8_t type = *d;
+        if ((type >> 4u) == 0) {
+            // single value
+            uint8_t len = 1u << ((type - 1u) / 2);
+            if (len == 16) {
+                len = 1;
+            } else if (type == CM_FLOAT) {
+                len = sizeof(float);
+            } else if (type == CM_DOUBLE) {
+                len = sizeof(double);
+            }
+
+            --size;
+            ++d;
+
+            if (len > 1) {
+                inverseByteOrder(d, len);
+            }
+
+            size -= len;
+            d += len;
+        } else if (type & CM_ARRAY) {
+            // length of each item
+            uint8_t len = (type & 0xFu) + 1;
+            ++d;
+            --size;
+            uint32_t itemCount = *(uint32_t *) d;
+            d += sizeof(uint32_t);
+            size -= sizeof(uint32_t);
+            for (int i = 0; i < itemCount; ++i) {
+                inverseByteOrder(d, len);
+                d += len;
+                size -= len;
+            }
+        } else if (type == CM_VERSION) {
+            size--;
+            ++d;
+            inverseByteOrder(d, sizeof(uint32_t));
+            d += sizeof(uint32_t);
+            size -= sizeof(uint32_t);
+        } else {
+            // unknown flag
+            return false;
+        }
+    }
+    return true;
 }

@@ -21,7 +21,7 @@ SCENARIO("Reader and writer creation", "[create]") {
             }
         }
 
-        WHEN("Reader is created from message with same endianness") {
+        WHEN("Reader is created") {
             buffer[0] = e[0];
             buffer[1] = e[1];
 
@@ -33,25 +33,6 @@ SCENARIO("Reader and writer creation", "[create]") {
 
             AND_THEN("Read size is increased") {
                 REQUIRE(reader->readSize == 2);
-            }
-
-            AND_THEN("Endianness is read correctly") {
-                REQUIRE(reader->endianMatch);
-            }
-        }
-
-        WHEN("Reader is created from message with inverted endianness") {
-            buffer[0] = e[1];
-            buffer[1] = e[0];
-
-            auto reader = cmGetStaticReader(buffer.data(), buffer.size());
-
-            THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
-            }
-
-            AND_THEN("Endianness is read correctly") {
-                REQUIRE_FALSE(reader->endianMatch);
             }
         }
 
@@ -279,6 +260,52 @@ SCENARIO("Read message", "[read]") {
             }
         }
     }
+
+    GIVEN("Message with array and inverse endianness") {
+        std::vector<uint32_t> dataU32{0, 123, 17, 76234, 2349843723};
+        std::vector<uint32_t> data2U32{78, 547, 879, 789674232};
+        std::vector<uint32_t> dataInverseU32 = dataU32;
+        std::vector<uint32_t> data2InverseU32 = data2U32;
+        // change endianness of data
+        for (auto &i : dataInverseU32) {
+            auto *d = (uint8_t *) &i;
+            std::swap(d[0], d[3]);
+            std::swap(d[1], d[2]);
+        }
+        for (auto &i : data2InverseU32) {
+            auto *d = (uint8_t *) &i;
+            std::swap(d[0], d[3]);
+            std::swap(d[1], d[2]);
+        }
+
+        cmWriteArray(writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
+        cmWriteArray(writer, data2InverseU32.data(), data2InverseU32.size(), sizeof(uint32_t));
+        cmWriteArray(writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
+
+        std::swap(writer->buffer[0], writer->buffer[1]);
+
+        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+
+        WHEN("Arrays is read") {
+            std::vector<uint32_t> readU32(32);
+            std::vector<uint32_t> read2U32(32);
+            std::vector<uint32_t> read3U32(32);
+
+            auto size = cmReadArray(reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            readU32.resize(size);
+            size = cmReadArray(reader, read2U32.data(), read2U32.size(), sizeof(uint32_t));
+            read2U32.resize(size);
+            size = cmReadArray(reader, read3U32.data(), read3U32.size(), sizeof(uint32_t));
+            read3U32.resize(size);
+
+            THEN("Read arrays are correct") {
+                REQUIRE_THAT(readU32, Catch::Matchers::Equals(dataU32));
+                REQUIRE_THAT(read2U32, Catch::Matchers::Equals(data2U32));
+                REQUIRE_THAT(read3U32, Catch::Matchers::Equals(dataU32));
+            }
+        }
+    }
+
 
     GIVEN("Non-empty message with int32 in inverse endian mode") {
         int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
