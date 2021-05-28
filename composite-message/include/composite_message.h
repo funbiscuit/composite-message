@@ -6,25 +6,28 @@
  * 0x07 0x09 indicates big-endian, 0x09 0x07 indicates low-endian
  * Then client data is written, each is described by flag
  *
- * Primitive types:
- * - 0x1        int8
- * - 0x2        uint8
- * - 0x3        int16
- * - 0x4        uint16
- * - 0x5        int32
- * - 0x6        uint32
- * - 0x7        int64
- * - 0x8        uint64
- * - 0x9        bool (1 byte)
- * - 0xA        char (1 byte)
- * - 0xB        float
- * - 0xC        double
+ * Primitive types are represented by 5 bits:
+ * - ABCXX      XX represent type length (2^XX bytes), ABC represent type
+ *              001 - unsigned int, 010 - signed int, 011 - float, 100 - double
+ *              101 - char, 110 - bool:
+ * - 00100      uint8
+ * - 01000      int8
+ * - 00101      uint16
+ * - 01001      int16
+ * - 00110      uint32
+ * - 01010      int32
+ * - 00111      uint64
+ * - 01011      int64
+ * - 01110      float
+ * - 10011      double
+ * - 10100      char (1 byte)
+ * - 11000      bool (1 byte)
  *
  * Flags:
  * - 0000 0000  End of message
- * - 0000 XXXX  Value of primitive type
- * - 0001 XXXX  Primitive type without value (null equivalent)
- * - 0010 XXXX  Array of primitive types
+ * - 000X XXXX  Value of primitive type (first 5 bits represent type)
+ * - 001X XXXX  Primitive type without value (null equivalent)
+ * - 010X XXXX  Array of primitive types (first 5 bits represent type)
  *              Array begins with its size (uint32) followed by elements
  * - 1000 0000  Name of the next value/block.
  *              Name begins with its length (uint8) followed by chars.
@@ -180,7 +183,8 @@ double cmReadD(CompositeMessageReader *reader);
  * Write array of values. Each value can be up to 16 bytes long
  * If buffer can't hold array of this size
  * firstError is set to CM_ERROR_NO_SPACE
- * If itemSize is 0 or greater than 16, firstError is set to CM_ERROR_INVALID_ARG
+ * itemSize must be power of two (maximum 8) otherwise
+ * firstError is set to CM_ERROR_INVALID_ARG
  * @param writer
  * @param data
  * @param itemCount how many items are in data array

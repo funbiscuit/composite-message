@@ -2,21 +2,20 @@
 
 #include <string.h>
 
-#define CM_INT8     0x1u
-#define CM_UINT8    0x2u
-#define CM_INT16    0x3u
-#define CM_UINT16   0x4u
-#define CM_INT32    0x5u
-#define CM_UINT32   0x6u
-#define CM_INT64    0x7u
-#define CM_UINT64   0x8u
-#define CM_BOOL     0x9u
-#define CM_CHAR     0xAu
-#define CM_FLOAT    0xBu
-#define CM_DOUBLE   0xCu
+// bits 2..4
+#define CM_TYPE_UINT    0x04u
+#define CM_TYPE_INT     0x08u
+#define CM_TYPE_FLOAT   0x0Cu
+#define CM_TYPE_DOUBLE  0x10u
+#define CM_TYPE_CHAR    0x14u
+#define CM_TYPE_BOOL    0x18u
 
-#define CM_ARRAY    0x20u
-#define CM_ARRAY_MASK   0xF0u
+#define CM_TYPE_MASK     0x1Cu
+#define CM_TYPE_LEN_MASK 0x03u
+
+#define CM_ARRAY    0x40u
+
+#define CM_END_OF_MESSAGE   0x00u
 
 #define CM_VERSION   0x83u
 
@@ -43,6 +42,45 @@ static bool ensureSpace(CompositeMessageWriter *writer, uint32_t size);
  */
 static bool checkValue(CompositeMessageReader *reader,
                        uint8_t type, uint8_t size);
+
+/**
+ * Write single value
+ * @param writer
+ * @param val pointer to value
+ * @param len size of value type in bytes
+ * @param type type of value as defined by CM_TYPE_*
+ * @return
+ */
+static bool writeValue(CompositeMessageWriter *writer, void *val, uint8_t len,
+                       uint8_t type);
+
+/**
+ * Read single value
+ * @param reader
+ * @param val pointer where value should be stored
+ * @param len size of value type in bytes
+ * @param type expected type of value as defined by CM_TYPE_*
+ * @return
+ */
+static bool readValue(CompositeMessageReader *reader, void *val, uint8_t len,
+                      uint8_t type);
+
+/**
+ * Get flag of primitive type that is defined by type (CM_TYPE_*) and length in
+ * bytes
+ * @param type
+ * @param len
+ * @return type flag or 0 if length is invalid
+ */
+static uint8_t getTypeFlag(uint8_t type, uint8_t len);
+
+/**
+ * Split provided flag into type of primitive and its length in bytes
+ * @param flag
+ * @param type
+ * @param len
+ */
+static void splitTypeFlag(uint8_t flag, uint8_t *type, uint8_t *len);
 
 /**
  * Write array of bytes directly into message
@@ -105,212 +143,120 @@ CompositeMessageReader *cmGetStaticReader(void *message, uint32_t size) {
 }
 
 void cmWriteI8(CompositeMessageWriter *writer, int8_t i) {
-    if (!ensureSpace(writer, 2))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_INT8;
-    *(int8_t *) &writer->buffer[writer->usedSize + 1] = i;
-
-    writer->usedSize += 2;
+    writeValue(writer, &i, sizeof(i), CM_TYPE_INT);
 }
 
 int8_t cmReadI8(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_INT8, 1))
-        return 0;
-
-    int8_t i = *(int8_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 2;
-    return i;
+    int8_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_INT);
+    return val;
 }
 
 void cmWriteU8(CompositeMessageWriter *writer, uint8_t i) {
-    if (!ensureSpace(writer, 2))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_UINT8;
-    writer->buffer[writer->usedSize + 1] = i;
-
-    writer->usedSize += 2;
+    writeValue(writer, &i, sizeof(i), CM_TYPE_UINT);
 }
 
 uint8_t cmReadU8(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_UINT8, 1))
-        return 0;
-
-    uint8_t i = reader->message[reader->readSize + 1];
-
-    reader->readSize += 2;
-    return i;
+    uint8_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_UINT);
+    return val;
 }
 
 void cmWriteI16(CompositeMessageWriter *writer, int16_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(int16_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_INT16;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(int16_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_INT);
 }
 
 int16_t cmReadI16(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_INT16, sizeof(int16_t)))
-        return 0;
-
-    int16_t i = *(int16_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(int16_t);
-    return i;
+    int16_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_INT);
+    return val;
 }
 
 void cmWriteU16(CompositeMessageWriter *writer, uint16_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(uint16_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_UINT16;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(uint16_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_UINT);
 }
 
 uint16_t cmReadU16(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_UINT16, sizeof(uint16_t)))
-        return 0;
-
-    uint16_t i = *(uint16_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(uint16_t);
-    return i;
+    uint16_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_UINT);
+    return val;
 }
 
 void cmWriteI32(CompositeMessageWriter *writer, int32_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(int32_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_INT32;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(int32_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_INT);
 }
 
 int32_t cmReadI32(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_INT32, sizeof(int32_t)))
-        return 0;
-
-    int32_t i = *(int32_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(int32_t);
-    return i;
+    int32_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_INT);
+    return val;
 }
 
 void cmWriteU32(CompositeMessageWriter *writer, uint32_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(uint32_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_UINT32;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(uint32_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_UINT);
 }
 
 uint32_t cmReadU32(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_UINT32, sizeof(uint32_t)))
-        return 0;
-
-    uint32_t i = *(uint32_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(uint32_t);
-    return i;
+    uint32_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_UINT);
+    return val;
 }
 
 void cmWriteI64(CompositeMessageWriter *writer, int64_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(int64_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_INT64;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(int64_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_INT);
 }
 
 int64_t cmReadI64(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_INT64, sizeof(int64_t)))
-        return 0;
-
-    int64_t i = *(int64_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(int64_t);
-    return i;
+    int64_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_INT);
+    return val;
 }
 
 
 void cmWriteU64(CompositeMessageWriter *writer, uint64_t i) {
-    if (!ensureSpace(writer, 1 + sizeof(uint64_t)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_UINT64;
-    writer->usedSize++;
-    writeBytes(writer, &i, sizeof(uint64_t));
+    writeValue(writer, &i, sizeof(i), CM_TYPE_UINT);
 }
 
 uint64_t cmReadU64(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_UINT64, sizeof(uint64_t)))
-        return 0;
-
-    uint64_t i = *(uint64_t *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(uint64_t);
-    return i;
+    uint64_t val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_UINT);
+    return val;
 }
 
 
 void cmWriteF(CompositeMessageWriter *writer, float f) {
-    if (!ensureSpace(writer, 1 + sizeof(float)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_FLOAT;
-    writer->usedSize++;
-    writeBytes(writer, &f, sizeof(float));
+    writeValue(writer, &f, sizeof(f), CM_TYPE_FLOAT);
 }
 
 float cmReadF(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_FLOAT, sizeof(float)))
-        return 0.f;
-
-    float f = *(float *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(float);
-    return f;
+    float val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_FLOAT);
+    return val;
 }
 
 void cmWriteD(CompositeMessageWriter *writer, double d) {
-    if (!ensureSpace(writer, 1 + sizeof(double)))
-        return;
-
-    writer->buffer[writer->usedSize] = CM_DOUBLE;
-    writer->usedSize++;
-    writeBytes(writer, &d, sizeof(double));
+    writeValue(writer, &d, sizeof(d), CM_TYPE_DOUBLE);
 }
 
 double cmReadD(CompositeMessageReader *reader) {
-    if (!checkValue(reader, CM_DOUBLE, sizeof(double)))
-        return 0.0;
-
-    double d = *(double *) &reader->message[reader->readSize + 1];
-
-    reader->readSize += 1 + sizeof(double);
-    return d;
+    double val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_DOUBLE);
+    return val;
 }
 
 void cmWriteArray(CompositeMessageWriter *writer,
                   const void *data, uint32_t itemCount, uint8_t itemSize) {
-    if (itemSize > 0x10 || itemSize == 0) {
+    if (itemSize > 0x08 || itemSize == 0) {
         writer->firstError = CM_ERROR_INVALID_ARG;
         return;
     }
-    uint8_t itemType = itemSize - 1;
+    uint8_t flag = getTypeFlag(CM_ARRAY, itemSize);
 
     // we need to place flag (1 byte), array size (uint32) and array itself
     if (!ensureSpace(writer, 1 + sizeof(uint32_t) + itemSize * itemCount))
         return;
 
-    writer->buffer[writer->usedSize] = CM_ARRAY | itemType;
+    writer->buffer[writer->usedSize] = flag;
     writer->usedSize++;
     writeBytes(writer, &itemCount, sizeof(uint32_t));
     writeBytes(writer, data, itemCount * itemSize);
@@ -322,14 +268,15 @@ uint32_t cmReadArray(CompositeMessageReader *reader,
         reader->firstError = CM_ERROR_INVALID_ARG;
         return 0;
     }
-    uint8_t itemType = itemSize - 1;
+    uint8_t flag = getTypeFlag(CM_ARRAY, itemSize);
 
     uint32_t arraySize = cmPeekArraySize(reader);
 
-    if (reader->firstError != CM_ERROR_NONE)
+    if (reader->firstError != CM_ERROR_NONE) {
         return 0;
+    }
 
-    if (reader->message[reader->readSize] != (CM_ARRAY | itemType)) {
+    if (reader->message[reader->readSize] != flag) {
         reader->firstError = CM_ERROR_NO_VALUE;
         return 0;
     }
@@ -351,7 +298,7 @@ uint32_t cmPeekArraySize(CompositeMessageReader *reader) {
         return 0;
 
     if (reader->readSize + 1 + sizeof(uint32_t) > reader->totalSize ||
-        (reader->message[reader->readSize] & CM_ARRAY_MASK) != CM_ARRAY) {
+        !(reader->message[reader->readSize] & CM_ARRAY)) {
         reader->firstError = CM_ERROR_NO_VALUE;
         return 0;
     }
@@ -405,6 +352,70 @@ static bool checkValue(CompositeMessageReader *reader,
     return true;
 }
 
+static bool writeValue(CompositeMessageWriter *writer, void *val, uint8_t len,
+                       uint8_t type) {
+    if (writer->firstError != CM_ERROR_NONE)
+        return false;
+    if (!ensureSpace(writer, 1 + len))
+        return false;
+    uint8_t flag = getTypeFlag(type, len);
+    if (flag == 0) {
+        writer->firstError = CM_ERROR_INVALID_ARG;
+        return false;
+    }
+
+    writer->buffer[writer->usedSize] = flag;
+    writer->usedSize++;
+    writeBytes(writer, val, len);
+    return true;
+}
+
+static bool readValue(CompositeMessageReader *reader, void *val, uint8_t len,
+                      uint8_t type) {
+    if (reader->firstError != CM_ERROR_NONE)
+        return false;
+    if (reader->totalSize - reader->readSize < len) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return false;
+    }
+    uint8_t typeStored, lenStored;
+    splitTypeFlag(reader->message[reader->readSize], &typeStored, &lenStored);
+
+    if (typeStored != type || len != lenStored) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return false;
+    }
+    ++reader->readSize;
+
+    memcpy(val, &reader->message[reader->readSize], len);
+
+    reader->readSize += len;
+    return true;
+}
+
+static uint8_t getTypeFlag(uint8_t type, uint8_t len) {
+    uint8_t flag = type;
+    if (len == 2) {
+        flag |= 0x01u;
+    } else if (len == 4) {
+        flag |= 0x02u;
+    } else if (len == 8) {
+        flag |= 0x03u;
+    } else if (len != 1) {
+        return 0;
+    }
+    return flag;
+}
+
+static void splitTypeFlag(uint8_t flag, uint8_t *type, uint8_t *len) {
+    if (len != NULL) {
+        *len = 1u << (flag & CM_TYPE_LEN_MASK);
+    }
+    if (type != NULL) {
+        *type = flag & CM_TYPE_MASK;
+    }
+}
+
 static bool writeBytes(CompositeMessageWriter *writer,
                        const void *data, uint32_t size) {
     if (!ensureSpace(writer, size))
@@ -428,16 +439,9 @@ static bool convertEndianness(void *message, uint32_t size) {
     uint8_t *d = (uint8_t *) message;
     while (size > 0) {
         uint8_t type = *d;
-        if ((type >> 4u) == 0) {
+        if ((type >> 5u) == 0 && type > 0) {
             // single value
-            uint8_t len = 1u << ((type - 1u) / 2);
-            if (len == 16) {
-                len = 1;
-            } else if (type == CM_FLOAT) {
-                len = sizeof(float);
-            } else if (type == CM_DOUBLE) {
-                len = sizeof(double);
-            }
+            uint8_t len = 1u << (type & CM_TYPE_LEN_MASK);
 
             --size;
             ++d;
@@ -450,7 +454,7 @@ static bool convertEndianness(void *message, uint32_t size) {
             d += len;
         } else if (type & CM_ARRAY) {
             // length of each item
-            uint8_t len = (type & 0xFu) + 1;
+            uint8_t len = 1u << (type & CM_TYPE_LEN_MASK);
             ++d;
             --size;
             uint32_t itemCount = *(uint32_t *) d;

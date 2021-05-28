@@ -69,10 +69,6 @@ SCENARIO("Write message", "[write]") {
                 REQUIRE(writer->usedSize == 4);
             }
 
-            AND_THEN("Int8 flag is placed after 2nd byte") {
-                REQUIRE(buffer[2] == 0x01);
-            }
-
             AND_THEN("Int8 is placed after 3rd byte") {
                 REQUIRE(((int8_t *) buffer.data())[3] == i);
             }
@@ -82,11 +78,7 @@ SCENARIO("Write message", "[write]") {
             uint8_t i = GENERATE(0, 127, 255);
             cmWriteU8(writer, i);
 
-            THEN("UInt8 flag is placed after 2nd byte") {
-                REQUIRE(buffer[2] == 0x02);
-            }
-
-            AND_THEN("UInt8 is placed after 3rd byte") {
+            THEN("UInt8 is placed after 3rd byte") {
                 REQUIRE(buffer[3] == i);
             }
         }
@@ -95,11 +87,7 @@ SCENARIO("Write message", "[write]") {
             int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
             cmWriteI32(writer, i);
 
-            THEN("Int32 flag is placed after 2nd byte") {
-                REQUIRE(buffer[2] == 0x05);
-            }
-
-            AND_THEN("Int32 is placed after 3rd byte") {
+            THEN("Int32 is placed after 3rd byte") {
                 REQUIRE(*(int32_t *) &buffer[3] == i);
             }
         }
@@ -215,12 +203,11 @@ SCENARIO("Read message", "[read]") {
     GIVEN("Message with arrays") {
         std::vector<uint8_t> dataU8{0, 123, 17, 255};
         std::vector<uint32_t> dataU32{0, 123, 17, UINT32_MAX, 234};
-        // emulate 16 byte data by pairs of u64
-        std::vector<uint64_t> dataU128{0, 11, 31, UINT64_MAX, 234, 57};
+        std::vector<uint64_t> dataU64{0, 11, 31, UINT64_MAX, 234, 57};
 
         cmWriteArray(writer, dataU8.data(), dataU8.size(), sizeof(uint8_t));
         cmWriteArray(writer, dataU32.data(), dataU32.size(), sizeof(uint32_t));
-        cmWriteArray(writer, dataU128.data(), dataU128.size() / 2, sizeof(uint64_t) * 2);
+        cmWriteArray(writer, dataU64.data(), dataU64.size(), sizeof(uint64_t));
 
         auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
 
@@ -240,14 +227,14 @@ SCENARIO("Read message", "[read]") {
         WHEN("Arrays are read") {
             std::vector<uint8_t> readU8(32);
             std::vector<uint32_t> readU32(32);
-            std::vector<uint64_t> readU128(32);
+            std::vector<uint64_t> readU64(32);
 
             auto size = cmReadArray(reader, readU8.data(), readU8.size(), sizeof(uint8_t));
             readU8.resize(size);
             size = cmReadArray(reader, readU32.data(), readU32.size(), sizeof(uint32_t));
             readU32.resize(size);
-            size = cmReadArray(reader, readU128.data(), readU128.size() / 2, sizeof(uint64_t) * 2);
-            readU128.resize(size * 2);
+            size = cmReadArray(reader, readU64.data(), readU64.size(), sizeof(uint64_t));
+            readU64.resize(size);
 
             THEN("No errors") {
                 REQUIRE(reader->firstError == CM_ERROR_NONE);
@@ -256,7 +243,7 @@ SCENARIO("Read message", "[read]") {
             AND_THEN("Read arrays are correct") {
                 REQUIRE_THAT(readU8, Catch::Matchers::Equals(dataU8));
                 REQUIRE_THAT(readU32, Catch::Matchers::Equals(dataU32));
-                REQUIRE_THAT(readU128, Catch::Matchers::Equals(dataU128));
+                REQUIRE_THAT(readU64, Catch::Matchers::Equals(readU64));
             }
         }
     }
