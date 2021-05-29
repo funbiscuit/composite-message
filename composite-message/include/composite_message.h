@@ -105,27 +105,20 @@ typedef struct {
 
 /**
  * Initialize message writer with given buffer and size
- * Statically allocated struct is used, so calling this method while
- * previous writer is still in use leads to undefined behavior.
- * You can allocate CompositeMessageWriter yourself and then
- * call cmInitWriter()
  * @param buffer - pointer to buffer for message building
  * @size size - size of buffer in bytes
- * @return pointer to initialized CompositeMessageWriter
+ * @return initialized CompositeMessageWriter
  */
-CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size);
+CompositeMessageWriter cmGetWriter(void *buffer, uint32_t size);
 
 /**
  * Initialize message reader with given message and size
- * Statically allocated struct is used, so calling this method while
- * previous reader is still in use leads to undefined behavior.
- * You can allocate CompositeMessageReader yourself and then call
- * cmInitWriter()
+ * Message must be non const since it will be modified internally
  * @param message - pointer to message that should be read
  * @size size - size of message in bytes
- * @return pointer to initialized CompositeMessageReader
+ * @return initialized CompositeMessageReader
  */
-CompositeMessageReader *cmGetStaticReader(void *message, uint32_t size);
+CompositeMessageReader cmGetReader(void *message, uint32_t size);
 
 /**
  * Write signed 8-bit integer to message. If buffer can't hold integer then

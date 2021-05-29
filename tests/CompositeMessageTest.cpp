@@ -14,10 +14,10 @@ SCENARIO("Reader and writer creation", "[create]") {
         auto *e = (uint8_t *) &i;
 
         WHEN("Reader is created from message without endianness") {
-            auto reader = cmGetStaticReader(buffer.data(), buffer.size());
+            auto reader = cmGetReader(buffer.data(), buffer.size());
 
             THEN("Endianness errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NO_ENDIAN);
+                REQUIRE(reader.firstError == CM_ERROR_NO_ENDIAN);
             }
         }
 
@@ -25,26 +25,26 @@ SCENARIO("Reader and writer creation", "[create]") {
             buffer[0] = e[0];
             buffer[1] = e[1];
 
-            auto reader = cmGetStaticReader(buffer.data(), buffer.size());
+            auto reader = cmGetReader(buffer.data(), buffer.size());
 
             THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Read size is increased") {
-                REQUIRE(reader->readSize == 2);
+                REQUIRE(reader.readSize == 2);
             }
         }
 
         WHEN("Writer is created") {
-            auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+            auto writer = cmGetWriter(buffer.data(), buffer.size());
 
             THEN("No errors") {
-                REQUIRE(writer->firstError == CM_ERROR_NONE);
+                REQUIRE(writer.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Endianness is written to first 2 bytes") {
-                REQUIRE(writer->usedSize == 2);
+                REQUIRE(writer.usedSize == 2);
                 REQUIRE((int) e[0] == (int) buffer[0]);
                 REQUIRE((int) e[1] == (int) buffer[1]);
             }
@@ -55,18 +55,18 @@ SCENARIO("Reader and writer creation", "[create]") {
 SCENARIO("Write message", "[write]") {
     GIVEN("Writer with enough space") {
         std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+        auto writer = cmGetWriter(buffer.data(), buffer.size());
 
         WHEN("Int8 is written") {
             int8_t i = GENERATE(-128, 5, 127);
-            cmWriteI8(writer, i);
+            cmWriteI8(&writer, i);
 
             THEN("No errors") {
-                REQUIRE(writer->firstError == CM_ERROR_NONE);
+                REQUIRE(writer.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Used size is increased") {
-                REQUIRE(writer->usedSize == 4);
+                REQUIRE(writer.usedSize == 4);
             }
 
             AND_THEN("Int8 is placed after 3rd byte") {
@@ -76,7 +76,7 @@ SCENARIO("Write message", "[write]") {
 
         WHEN("UInt8 is written") {
             uint8_t i = GENERATE(0, 127, 255);
-            cmWriteU8(writer, i);
+            cmWriteU8(&writer, i);
 
             THEN("UInt8 is placed after 3rd byte") {
                 REQUIRE(buffer[3] == i);
@@ -85,7 +85,7 @@ SCENARIO("Write message", "[write]") {
 
         WHEN("Int32 is written") {
             int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
-            cmWriteI32(writer, i);
+            cmWriteI32(&writer, i);
 
             THEN("Int32 is placed after 3rd byte") {
                 REQUIRE(*(int32_t *) &buffer[3] == i);
@@ -95,13 +95,13 @@ SCENARIO("Write message", "[write]") {
 
     GIVEN("Writer with not enough space") {
         std::vector<uint8_t> buffer(3);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+        auto writer = cmGetWriter(buffer.data(), buffer.size());
 
         WHEN("Int8 is written") {
-            cmWriteI8(writer, 15);
+            cmWriteI8(&writer, 15);
 
             THEN("No space error") {
-                REQUIRE(writer->firstError == CM_ERROR_NO_SPACE);
+                REQUIRE(writer.firstError == CM_ERROR_NO_SPACE);
             }
         }
     }
@@ -109,23 +109,23 @@ SCENARIO("Write message", "[write]") {
 
 SCENARIO("Read message", "[read]") {
     std::vector<uint8_t> buffer(1024);
-    auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+    auto writer = cmGetWriter(buffer.data(), buffer.size());
 
     GIVEN("Non-empty message with int8") {
         int8_t i = GENERATE(-128, 5, 127);
-        cmWriteI8(writer, i);
+        cmWriteI8(&writer, i);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Int8 is read") {
-            auto r = cmReadI8(reader);
+            auto r = cmReadI8(&reader);
 
             THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Read size is increased") {
-                REQUIRE(reader->readSize == 4);
+                REQUIRE(reader.readSize == 4);
             }
 
             AND_THEN("Read int8 is correct") {
@@ -143,29 +143,29 @@ SCENARIO("Read message", "[read]") {
         uint32_t i6 = UINT16_MAX;
         int64_t i7 = GENERATE(INT64_MIN, INT64_MAX);
         uint64_t i8 = UINT64_MAX;
-        cmWriteI8(writer, i1);
-        cmWriteU8(writer, i2);
-        cmWriteI16(writer, i3);
-        cmWriteU16(writer, i4);
-        cmWriteI32(writer, i5);
-        cmWriteU32(writer, i6);
-        cmWriteI64(writer, i7);
-        cmWriteU64(writer, i8);
+        cmWriteI8(&writer, i1);
+        cmWriteU8(&writer, i2);
+        cmWriteI16(&writer, i3);
+        cmWriteU16(&writer, i4);
+        cmWriteI32(&writer, i5);
+        cmWriteU32(&writer, i6);
+        cmWriteI64(&writer, i7);
+        cmWriteU64(&writer, i8);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Values are read") {
-            auto r1 = cmReadI8(reader);
-            auto r2 = cmReadU8(reader);
-            auto r3 = cmReadI16(reader);
-            auto r4 = cmReadU16(reader);
-            auto r5 = cmReadI32(reader);
-            auto r6 = cmReadU32(reader);
-            auto r7 = cmReadI64(reader);
-            auto r8 = cmReadU64(reader);
+            auto r1 = cmReadI8(&reader);
+            auto r2 = cmReadU8(&reader);
+            auto r3 = cmReadI16(&reader);
+            auto r4 = cmReadU16(&reader);
+            auto r5 = cmReadI32(&reader);
+            auto r6 = cmReadU32(&reader);
+            auto r7 = cmReadI64(&reader);
+            auto r8 = cmReadU64(&reader);
 
             THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Read values are correct") {
@@ -184,14 +184,14 @@ SCENARIO("Read message", "[read]") {
     GIVEN("Non-empty message with float/double value") {
         float f = GENERATE(FLT_MIN, 1.f, FLT_MAX);
         double d = GENERATE(DBL_MIN, 1.0, DBL_MAX);
-        cmWriteF(writer, f);
-        cmWriteD(writer, d);
+        cmWriteF(&writer, f);
+        cmWriteD(&writer, d);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Float and double values are read") {
-            auto r1 = cmReadF(reader);
-            auto r2 = cmReadD(reader);
+            auto r1 = cmReadF(&reader);
+            auto r2 = cmReadD(&reader);
 
             THEN("Read values are correct") {
                 REQUIRE(f == r1);
@@ -205,21 +205,21 @@ SCENARIO("Read message", "[read]") {
         std::vector<uint32_t> dataU32{0, 123, 17, UINT32_MAX, 234};
         std::vector<uint64_t> dataU64{0, 11, 31, UINT64_MAX, 234, 57};
 
-        cmWriteArray(writer, dataU8.data(), dataU8.size(), sizeof(uint8_t));
-        cmWriteArray(writer, dataU32.data(), dataU32.size(), sizeof(uint32_t));
-        cmWriteArray(writer, dataU64.data(), dataU64.size(), sizeof(uint64_t));
+        cmWriteArray(&writer, dataU8.data(), dataU8.size(), sizeof(uint8_t));
+        cmWriteArray(&writer, dataU32.data(), dataU32.size(), sizeof(uint32_t));
+        cmWriteArray(&writer, dataU64.data(), dataU64.size(), sizeof(uint64_t));
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Array size is peeked") {
-            auto size = cmPeekArraySize(reader);
+            auto size = cmPeekArraySize(&reader);
 
             THEN("Size is correct") {
                 REQUIRE(size == dataU8.size());
             }
 
             AND_THEN("Size can be peeked again") {
-                size = cmPeekArraySize(reader);
+                size = cmPeekArraySize(&reader);
                 REQUIRE(size == dataU8.size());
             }
         }
@@ -229,15 +229,15 @@ SCENARIO("Read message", "[read]") {
             std::vector<uint32_t> readU32(32);
             std::vector<uint64_t> readU64(32);
 
-            auto size = cmReadArray(reader, readU8.data(), readU8.size(), sizeof(uint8_t));
+            auto size = cmReadArray(&reader, readU8.data(), readU8.size(), sizeof(uint8_t));
             readU8.resize(size);
-            size = cmReadArray(reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            size = cmReadArray(&reader, readU32.data(), readU32.size(), sizeof(uint32_t));
             readU32.resize(size);
-            size = cmReadArray(reader, readU64.data(), readU64.size(), sizeof(uint64_t));
+            size = cmReadArray(&reader, readU64.data(), readU64.size(), sizeof(uint64_t));
             readU64.resize(size);
 
             THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Read arrays are correct") {
@@ -265,24 +265,24 @@ SCENARIO("Read message", "[read]") {
             std::swap(d[1], d[2]);
         }
 
-        cmWriteArray(writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
-        cmWriteArray(writer, data2InverseU32.data(), data2InverseU32.size(), sizeof(uint32_t));
-        cmWriteArray(writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
+        cmWriteArray(&writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
+        cmWriteArray(&writer, data2InverseU32.data(), data2InverseU32.size(), sizeof(uint32_t));
+        cmWriteArray(&writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
 
-        std::swap(writer->buffer[0], writer->buffer[1]);
+        std::swap(writer.buffer[0], writer.buffer[1]);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Arrays is read") {
             std::vector<uint32_t> readU32(32);
             std::vector<uint32_t> read2U32(32);
             std::vector<uint32_t> read3U32(32);
 
-            auto size = cmReadArray(reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            auto size = cmReadArray(&reader, readU32.data(), readU32.size(), sizeof(uint32_t));
             readU32.resize(size);
-            size = cmReadArray(reader, read2U32.data(), read2U32.size(), sizeof(uint32_t));
+            size = cmReadArray(&reader, read2U32.data(), read2U32.size(), sizeof(uint32_t));
             read2U32.resize(size);
-            size = cmReadArray(reader, read3U32.data(), read3U32.size(), sizeof(uint32_t));
+            size = cmReadArray(&reader, read3U32.data(), read3U32.size(), sizeof(uint32_t));
             read3U32.resize(size);
 
             THEN("Read arrays are correct") {
@@ -296,18 +296,18 @@ SCENARIO("Read message", "[read]") {
 
     GIVEN("Non-empty message with int32 in inverse endian mode") {
         int32_t i = GENERATE(INT32_MIN, 0, INT32_MAX);
-        cmWriteI32(writer, i);
+        cmWriteI32(&writer, i);
         std::swap(buffer[0], buffer[1]);
         std::swap(buffer[3], buffer[6]);
         std::swap(buffer[4], buffer[5]);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Int32 is read") {
-            auto r = cmReadI32(reader);
+            auto r = cmReadI32(&reader);
 
             THEN("No errors") {
-                REQUIRE(reader->firstError == CM_ERROR_NONE);
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
             }
 
             AND_THEN("Read int32 is correct") {
@@ -318,14 +318,14 @@ SCENARIO("Read message", "[read]") {
 
     GIVEN("Message without data") {
         buffer.resize(2);
-        writer = cmGetStaticWriter(buffer.data(), buffer.size());
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        writer = cmGetWriter(buffer.data(), buffer.size());
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Int8 is read") {
-            cmReadI8(reader);
+            cmReadI8(&reader);
 
             THEN("No value error") {
-                REQUIRE(reader->firstError == CM_ERROR_NO_VALUE);
+                REQUIRE(reader.firstError == CM_ERROR_NO_VALUE);
             }
         }
     }
@@ -335,15 +335,15 @@ SCENARIO("Read message with extras", "[read]") {
 
     GIVEN("Non-empty message with version") {
         std::vector<uint8_t> buffer(1024);
-        auto writer = cmGetStaticWriter(buffer.data(), buffer.size());
+        auto writer = cmGetWriter(buffer.data(), buffer.size());
 
         uint32_t ver = GENERATE(157, 157157, UINT32_MAX);
-        cmWriteVersion(writer, ver);
+        cmWriteVersion(&writer, ver);
 
-        auto reader = cmGetStaticReader(writer->buffer, writer->usedSize);
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Version is read") {
-            auto r = cmReadVersion(reader);
+            auto r = cmReadVersion(&reader);
 
             THEN("Read value is correct") {
                 REQUIRE(r == ver);

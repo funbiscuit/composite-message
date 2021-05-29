@@ -22,10 +22,6 @@
 #define ENDIAN_MARK     0x0709u
 #define ENDIAN_INV_MARK 0x0907u
 
-static CompositeMessageWriter staticWriter;
-static CompositeMessageReader staticReader;
-
-
 /**
  * Ensures that current writer has enough space to write 'size' bytes
  * @param writer
@@ -107,39 +103,41 @@ static void inverseByteOrder(void *data, uint8_t size);
  */
 static bool convertEndianness(void *message, uint32_t size);
 
-CompositeMessageWriter *cmGetStaticWriter(void *buffer, uint32_t size) {
-    staticWriter.buffer = (uint8_t *) buffer;
-    staticWriter.bufferSize = size;
-    staticWriter.usedSize = 0;
-    staticWriter.firstError = CM_ERROR_NONE;
+CompositeMessageWriter cmGetWriter(void *buffer, uint32_t size) {
+    static CompositeMessageWriter writer;
+    writer.buffer = (uint8_t *) buffer;
+    writer.bufferSize = size;
+    writer.usedSize = 0;
+    writer.firstError = CM_ERROR_NONE;
     if (size < 2) {
-        staticWriter.firstError = CM_ERROR_NO_SPACE;
+        writer.firstError = CM_ERROR_NO_SPACE;
     } else {
-        *(uint16_t *) staticWriter.buffer = ENDIAN_MARK;
-        staticWriter.usedSize = 2;
+        *(uint16_t *) writer.buffer = ENDIAN_MARK;
+        writer.usedSize = 2;
     }
-    return &staticWriter;
+    return writer;
 }
 
-CompositeMessageReader *cmGetStaticReader(void *message, uint32_t size) {
+CompositeMessageReader cmGetReader(void *message, uint32_t size) {
+    static CompositeMessageReader reader;
     uint8_t *m = (uint8_t *) message;
-    staticReader.message = m;
-    staticReader.totalSize = size;
-    staticReader.readSize = 0;
-    staticReader.firstError = CM_ERROR_NONE;
+    reader.message = m;
+    reader.totalSize = size;
+    reader.readSize = 0;
+    reader.firstError = CM_ERROR_NONE;
     uint16_t e = *(uint16_t *) m;
     if (size < 2 || (e != ENDIAN_MARK && e != ENDIAN_INV_MARK)) {
-        staticReader.firstError = CM_ERROR_NO_ENDIAN;
+        reader.firstError = CM_ERROR_NO_ENDIAN;
     } else {
         // in case of inversed endianness, swap all groups of bytes
         // so message can be processed in normal way
         if (e != ENDIAN_MARK && !convertEndianness(&m[2], size - 2)) {
-            staticReader.firstError = CM_ERROR_NO_ENDIAN;
+            reader.firstError = CM_ERROR_NO_ENDIAN;
         } else {
-            staticReader.readSize = 2;
+            reader.readSize = 2;
         }
     }
-    return &staticReader;
+    return reader;
 }
 
 void cmWriteI8(CompositeMessageWriter *writer, int8_t i) {
