@@ -200,6 +200,29 @@ SCENARIO("Read message", "[read]") {
         }
     }
 
+    GIVEN("Message with bool and char values") {
+        bool b1 = GENERATE(false, true);
+        char c2 = GENERATE('a', 'b', 'D');
+        bool b3 = GENERATE(false, true);
+        cmWriteBool(&writer, b1);
+        cmWriteChar(&writer, c2);
+        cmWriteBool(&writer, b3);
+
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
+
+        WHEN("Values are read") {
+            auto r1 = cmReadBool(&reader);
+            auto r2 = cmReadChar(&reader);
+            auto r3 = cmReadBool(&reader);
+
+            THEN("Read values are correct") {
+                REQUIRE(b1 == r1);
+                REQUIRE(c2 == r2);
+                REQUIRE(b3 == r3);
+            }
+        }
+    }
+
     GIVEN("Message with arrays") {
         std::vector<uint8_t> dataU8{0, 123, 17, 255};
         std::vector<uint32_t> dataU32{0, 123, 17, UINT32_MAX, 234};

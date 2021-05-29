@@ -172,6 +172,14 @@ void cmWriteD(CompositeMessageWriter *writer, double d);
 
 double cmReadD(CompositeMessageReader *reader);
 
+void cmWriteBool(CompositeMessageWriter *writer, bool val);
+
+bool cmReadBool(CompositeMessageReader *reader);
+
+void cmWriteChar(CompositeMessageWriter *writer, char val);
+
+char cmReadChar(CompositeMessageReader *reader);
+
 /**
  * Write array of values. Each value can be up to 16 bytes long
  * If buffer can't hold array of this size

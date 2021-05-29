@@ -242,6 +242,26 @@ double cmReadD(CompositeMessageReader *reader) {
     return val;
 }
 
+void cmWriteBool(CompositeMessageWriter *writer, bool val) {
+    writeValue(writer, &val, sizeof(val), CM_TYPE_BOOL);
+}
+
+bool cmReadBool(CompositeMessageReader *reader) {
+    bool val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_BOOL);
+    return val;
+}
+
+void cmWriteChar(CompositeMessageWriter *writer, char val) {
+    writeValue(writer, &val, sizeof(val), CM_TYPE_CHAR);
+}
+
+char cmReadChar(CompositeMessageReader *reader) {
+    char val = 0;
+    readValue(reader, &val, sizeof(val), CM_TYPE_CHAR);
+    return val;
+}
+
 void cmWriteArray(CompositeMessageWriter *writer,
                   const void *data, uint32_t itemCount, uint8_t itemSize) {
     if (itemSize > 0x08 || itemSize == 0) {
