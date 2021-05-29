@@ -345,6 +345,16 @@ SCENARIO("Read message", "[read]") {
 
         std::swap(writer.buffer[0], writer.buffer[1]);
 
+        // swap sizes
+        std::swap(writer.buffer[3], writer.buffer[6]);
+        std::swap(writer.buffer[4], writer.buffer[5]);
+
+        std::swap(writer.buffer[28], writer.buffer[31]);
+        std::swap(writer.buffer[29], writer.buffer[30]);
+
+        std::swap(writer.buffer[49], writer.buffer[52]);
+        std::swap(writer.buffer[50], writer.buffer[51]);
+
         auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
         WHEN("Arrays is read") {

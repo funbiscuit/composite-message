@@ -95,6 +95,12 @@ static void inverseByteOrder(void *data, uint8_t size);
  */
 static bool convertEndianness(void *message, uint32_t size);
 
+static bool isSingleValue(uint8_t flag);
+
+static bool isArray(uint8_t flag);
+
+static bool isVersion(uint8_t flag);
+
 CompositeMessageWriter cmGetWriter(void *buffer, uint32_t size) {
     static CompositeMessageWriter writer;
     writer.buffer = (uint8_t *) buffer;
@@ -482,43 +488,44 @@ static void inverseByteOrder(void *data, uint8_t size) {
 static bool convertEndianness(void *message, uint32_t size) {
     uint8_t *d = (uint8_t *) message;
     while (size > 0) {
-        uint8_t type = *d;
-        if ((type >> 5u) == 0 && type > 0) {
-            // single value
-            uint8_t len = 1u << (type & CM_TYPE_LEN_MASK);
+        uint8_t flag = *d;
 
-            --size;
-            ++d;
+        uint8_t itemLen = 1u << (flag & CM_TYPE_LEN_MASK);
+        uint32_t itemCount = 1;
 
-            if (len > 1) {
-                inverseByteOrder(d, len);
-            }
+        --size;
+        ++d;
 
-            size -= len;
-            d += len;
-        } else if (type & CM_ARRAY) {
+        if (isArray(flag)) {
             // length of each item
-            uint8_t len = 1u << (type & CM_TYPE_LEN_MASK);
-            ++d;
-            --size;
-            uint32_t itemCount = *(uint32_t *) d;
-            d += sizeof(uint32_t);
-            size -= sizeof(uint32_t);
-            for (int i = 0; i < itemCount; ++i) {
-                inverseByteOrder(d, len);
-                d += len;
-                size -= len;
-            }
-        } else if (type == CM_VERSION) {
-            size--;
-            ++d;
             inverseByteOrder(d, sizeof(uint32_t));
+            itemCount = *(uint32_t *) d;
             d += sizeof(uint32_t);
             size -= sizeof(uint32_t);
-        } else {
+        } else if (isVersion(flag)) {
+            itemLen = sizeof(uint32_t);
+        } else if (!isSingleValue(flag)) {
             // unknown flag
             return false;
         }
+
+        for (int i = 0; i < itemCount; ++i) {
+            inverseByteOrder(d, itemLen);
+            d += itemLen;
+            size -= itemLen;
+        }
     }
     return true;
+}
+
+static bool isSingleValue(uint8_t flag) {
+    return (flag >> 5u) == 0 && flag > 0;
+}
+
+static bool isArray(uint8_t flag) {
+    return (flag >> 5u) == 2;
+}
+
+static bool isVersion(uint8_t flag) {
+    return flag == CM_VERSION;
 }
