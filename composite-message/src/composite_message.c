@@ -2,13 +2,6 @@
 
 #include <string.h>
 
-// bits 2..4
-#define CM_TYPE_UINT    0x04u
-#define CM_TYPE_INT     0x08u
-#define CM_TYPE_FLOAT   0x0Cu
-#define CM_TYPE_BOOL    0x10u
-#define CM_TYPE_CHAR    0x14u
-
 #define CM_TYPE_MASK     0x1Cu
 #define CM_TYPE_LEN_MASK 0x03u
 
@@ -261,13 +254,17 @@ char cmReadChar(CompositeMessageReader *reader) {
     return val;
 }
 
-void cmWriteArray(CompositeMessageWriter *writer,
-                  const void *data, uint32_t itemCount, uint8_t itemSize) {
+void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
+                       uint8_t itemSize, const void *data, uint32_t itemCount) {
     if (itemSize > 0x08 || itemSize == 0) {
         writer->firstError = CM_ERROR_INVALID_ARG;
         return;
     }
-    uint8_t flag = getTypeFlag(CM_ARRAY, itemSize);
+    if (itemType > 0x14 || itemType < 0x04) {
+        writer->firstError = CM_ERROR_INVALID_ARG;
+        return;
+    }
+    uint8_t flag = getTypeFlag(CM_ARRAY | itemType, itemSize);
 
     // we need to place flag (1 byte), array size (uint32) and array itself
     if (!ensureSpace(writer, 1 + sizeof(uint32_t) + itemSize * itemCount))
@@ -279,13 +276,17 @@ void cmWriteArray(CompositeMessageWriter *writer,
     writeBytes(writer, data, itemCount * itemSize);
 }
 
-uint32_t cmReadArray(CompositeMessageReader *reader,
-                     void *buffer, uint32_t maxItems, uint8_t itemSize) {
-    if (itemSize > 0x10 || itemSize == 0) {
+uint32_t cmReadTypedArray(CompositeMessageReader *reader, uint8_t itemType,
+                          uint8_t itemSize, void *buffer, uint32_t maxItems) {
+    if (itemSize > 0x08 || itemSize == 0) {
         reader->firstError = CM_ERROR_INVALID_ARG;
         return 0;
     }
-    uint8_t flag = getTypeFlag(CM_ARRAY, itemSize);
+    if (itemType > 0x14 || itemType < 0x04) {
+        reader->firstError = CM_ERROR_INVALID_ARG;
+        return 0;
+    }
+    uint8_t flag = getTypeFlag(CM_ARRAY | itemType, itemSize);
 
     uint32_t arraySize = cmPeekArraySize(reader);
 

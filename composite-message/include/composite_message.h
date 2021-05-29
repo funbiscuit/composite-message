@@ -45,6 +45,12 @@
 #ifndef COMPOSITE_MESSAGE_H
 #define COMPOSITE_MESSAGE_H
 
+#define CM_TYPE_UINT    0x04u
+#define CM_TYPE_INT     0x08u
+#define CM_TYPE_FLOAT   0x0Cu
+#define CM_TYPE_BOOL    0x10u
+#define CM_TYPE_CHAR    0x14u
+
 #define CM_ERROR_NONE 0
 #define CM_ERROR_NO_ENDIAN 1
 #define CM_ERROR_NO_SPACE 2
@@ -181,36 +187,64 @@ void cmWriteChar(CompositeMessageWriter *writer, char val);
 char cmReadChar(CompositeMessageReader *reader);
 
 /**
- * Write array of values. Each value can be up to 16 bytes long
+ * Write array of values. Each value can be up to 8 bytes long
  * If buffer can't hold array of this size
  * firstError is set to CM_ERROR_NO_SPACE
  * itemSize must be power of two (maximum 8) otherwise
  * firstError is set to CM_ERROR_INVALID_ARG
+ * There are helper macros cmWriteXArray where you don't need to set
+ * itemType and itemSize
  * @param writer
+ * @param itemType type of each item (one of CM_TYPE_X defines)
+ * @param itemSize size of each item in bytes
  * @param data
  * @param itemCount how many items are in data array
- * @param itemSize size of each item (maximum 16 bytes)
  */
-void cmWriteArray(CompositeMessageWriter *writer,
-                  const void *data, uint32_t itemCount, uint8_t itemSize);
+void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
+                       uint8_t itemSize, const void *data, uint32_t itemCount);
+
+#define cmWriteUArray(writer, data, itemCount) \
+    cmWriteTypedArray((writer), CM_TYPE_UINT, sizeof(*(data)), (data), (itemCount))
+#define cmWriteIArray(writer, data, itemCount) \
+    cmWriteTypedArray((writer), CM_TYPE_INT, sizeof(*(data)), (data), (itemCount))
+#define cmWriteFloatArray(writer, data, itemCount) \
+    cmWriteTypedArray((writer), CM_TYPE_FLOAT, sizeof(*(data)), (data), (itemCount))
+#define cmWriteBoolArray(writer, data, itemCount) \
+    cmWriteTypedArray((writer), CM_TYPE_BOOL, sizeof(*(data)), (data), (itemCount))
+#define cmWriteCharArray(writer, data, itemCount) \
+    cmWriteTypedArray((writer), CM_TYPE_CHAR, sizeof(*(data)), (data), (itemCount))
 
 /**
- * Read array of values into provided buffer. Each value can be up to 16 bytes
+ * Read array of values into provided buffer. Each value can be up to 8 bytes
  * If next element is not an array, firstError is set to CM_ERROR_NO_VALUE
  * If provided buffer is insufficient to store array, firstError
  * is set to CM_ERROR_NO_SPACE
- * If itemSize is 0 or greater than 16, firstError is set to CM_ERROR_INVALID_ARG
- * If actual array in message has different item size, firstError
+ * If itemSize is 0 or greater than 8, firstError is set to CM_ERROR_INVALID_ARG
+ * If actual array in message has different item size or type, firstError
  * is set to CM_ERROR_INVALID_ARG
  * If read is successful, size of read array is returned
+ * There are helper macros cmReadXArray where you don't need to set
+ * itemType and itemSize
  * @param reader
+ * @param itemType type of each item (one of CM_TYPE_X defines)
+ * @param itemSize size of each item in bytes
  * @param buffer
  * @param maxItems how many items buffer can store
- * @param itemSize size of each item (maximum 16 bytes)
  * @return
  */
-uint32_t cmReadArray(CompositeMessageReader *reader,
-                     void *buffer, uint32_t maxItems, uint8_t itemSize);
+uint32_t cmReadTypedArray(CompositeMessageReader *reader, uint8_t itemType,
+                          uint8_t itemSize, void *buffer, uint32_t maxItems);
+
+#define cmReadUArray(reader, buffer, maxItems) \
+    cmReadTypedArray((reader), CM_TYPE_UINT, sizeof(*(buffer)), (buffer), (maxItems))
+#define cmReadIArray(reader, buffer, maxItems) \
+    cmReadTypedArray((reader), CM_TYPE_INT, sizeof(*(buffer)), (buffer), (maxItems))
+#define cmReadFloatArray(reader, buffer, maxItems) \
+    cmReadTypedArray((reader), CM_TYPE_FLOAT, sizeof(*(buffer)), (buffer), (maxItems))
+#define cmReadBoolArray(reader, buffer, maxItems) \
+    cmReadTypedArray((reader), CM_TYPE_BOOL, sizeof(*(buffer)), (buffer), (maxItems))
+#define cmReadCharArray(reader, buffer, maxItems) \
+    cmReadTypedArray((reader), CM_TYPE_CHAR, sizeof(*(buffer)), (buffer), (maxItems))
 
 /**
  * Read size of next array. This function doesn't change state of

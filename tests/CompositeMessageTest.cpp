@@ -228,9 +228,9 @@ SCENARIO("Read message", "[read]") {
         std::vector<uint32_t> dataU32{0, 123, 17, UINT32_MAX, 234};
         std::vector<uint64_t> dataU64{0, 11, 31, UINT64_MAX, 234, 57};
 
-        cmWriteArray(&writer, dataU8.data(), dataU8.size(), sizeof(uint8_t));
-        cmWriteArray(&writer, dataU32.data(), dataU32.size(), sizeof(uint32_t));
-        cmWriteArray(&writer, dataU64.data(), dataU64.size(), sizeof(uint64_t));
+        cmWriteUArray(&writer, dataU8.data(), dataU8.size());
+        cmWriteUArray(&writer, dataU32.data(), dataU32.size());
+        cmWriteUArray(&writer, dataU64.data(), dataU64.size());
 
         auto reader = cmGetReader(writer.buffer, writer.usedSize);
 
@@ -252,11 +252,11 @@ SCENARIO("Read message", "[read]") {
             std::vector<uint32_t> readU32(32);
             std::vector<uint64_t> readU64(32);
 
-            auto size = cmReadArray(&reader, readU8.data(), readU8.size(), sizeof(uint8_t));
+            auto size = cmReadUArray(&reader, readU8.data(), readU8.size());
             readU8.resize(size);
-            size = cmReadArray(&reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            size = cmReadUArray(&reader, readU32.data(), readU32.size());
             readU32.resize(size);
-            size = cmReadArray(&reader, readU64.data(), readU64.size(), sizeof(uint64_t));
+            size = cmReadUArray(&reader, readU64.data(), readU64.size());
             readU64.resize(size);
 
             THEN("No errors") {
@@ -288,9 +288,9 @@ SCENARIO("Read message", "[read]") {
             std::swap(d[1], d[2]);
         }
 
-        cmWriteArray(&writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
-        cmWriteArray(&writer, data2InverseU32.data(), data2InverseU32.size(), sizeof(uint32_t));
-        cmWriteArray(&writer, dataInverseU32.data(), dataInverseU32.size(), sizeof(uint32_t));
+        cmWriteUArray(&writer, dataInverseU32.data(), dataInverseU32.size());
+        cmWriteUArray(&writer, data2InverseU32.data(), data2InverseU32.size());
+        cmWriteUArray(&writer, dataInverseU32.data(), dataInverseU32.size());
 
         std::swap(writer.buffer[0], writer.buffer[1]);
 
@@ -301,11 +301,11 @@ SCENARIO("Read message", "[read]") {
             std::vector<uint32_t> read2U32(32);
             std::vector<uint32_t> read3U32(32);
 
-            auto size = cmReadArray(&reader, readU32.data(), readU32.size(), sizeof(uint32_t));
+            auto size = cmReadUArray(&reader, readU32.data(), readU32.size());
             readU32.resize(size);
-            size = cmReadArray(&reader, read2U32.data(), read2U32.size(), sizeof(uint32_t));
+            size = cmReadUArray(&reader, read2U32.data(), read2U32.size());
             read2U32.resize(size);
-            size = cmReadArray(&reader, read3U32.data(), read3U32.size(), sizeof(uint32_t));
+            size = cmReadUArray(&reader, read3U32.data(), read3U32.size());
             read3U32.resize(size);
 
             THEN("Read arrays are correct") {
