@@ -211,7 +211,7 @@ void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
     cmWriteTypedArray((writer), CM_TYPE_FLOAT, sizeof(*(data)), (data), (itemCount))
 #define cmWriteBoolArray(writer, data, itemCount) \
     cmWriteTypedArray((writer), CM_TYPE_BOOL, sizeof(*(data)), (data), (itemCount))
-#define cmWriteCharArray(writer, data, itemCount) \
+#define cmWriteString(writer, data, itemCount) \
     cmWriteTypedArray((writer), CM_TYPE_CHAR, sizeof(*(data)), (data), (itemCount))
 
 /**
@@ -230,7 +230,7 @@ void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
  * @param itemSize size of each item in bytes
  * @param buffer
  * @param maxItems how many items buffer can store
- * @return
+ * @return number of items read. For char arrays this includes null terminator
  */
 uint32_t cmReadTypedArray(CompositeMessageReader *reader, uint8_t itemType,
                           uint8_t itemSize, void *buffer, uint32_t maxItems);
@@ -243,17 +243,27 @@ uint32_t cmReadTypedArray(CompositeMessageReader *reader, uint8_t itemType,
     cmReadTypedArray((reader), CM_TYPE_FLOAT, sizeof(*(buffer)), (buffer), (maxItems))
 #define cmReadBoolArray(reader, buffer, maxItems) \
     cmReadTypedArray((reader), CM_TYPE_BOOL, sizeof(*(buffer)), (buffer), (maxItems))
-#define cmReadCharArray(reader, buffer, maxItems) \
+#define cmReadString(reader, buffer, maxItems) \
     cmReadTypedArray((reader), CM_TYPE_CHAR, sizeof(*(buffer)), (buffer), (maxItems))
 
 /**
  * Read size of next array. This function doesn't change state of
  * reader if next element is array so it can be called multiple times.
  * If next element is not array, firstError is set to CM_ERROR_NO_VALUE
+ * For arrays of chars returns size of actual array (which includes null terminator)
  * @param writer
  * @return
  */
 uint32_t cmPeekArraySize(CompositeMessageReader *reader);
+
+/**
+ * Read length of next string. This function doesn't change state of
+ * reader if next element is array of chars so it can be called multiple times.
+ * If next element is not array of chars, firstError is set to CM_ERROR_NO_VALUE
+ * @param reader
+ * @return length of actual string (without null terminator)
+ */
+uint32_t cmPeekStringLength(CompositeMessageReader *reader);
 
 void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver);
 

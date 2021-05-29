@@ -266,6 +266,11 @@ void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
     }
     uint8_t flag = getTypeFlag(CM_ARRAY | itemType, itemSize);
 
+    // increase number of stored items to store extra null terminator
+    if (itemType == CM_TYPE_CHAR) {
+        ++itemCount;
+    }
+
     // we need to place flag (1 byte), array size (uint32) and array itself
     if (!ensureSpace(writer, 1 + sizeof(uint32_t) + itemSize * itemCount))
         return;
@@ -273,7 +278,13 @@ void cmWriteTypedArray(CompositeMessageWriter *writer, uint8_t itemType,
     writer->buffer[writer->usedSize] = flag;
     writer->usedSize++;
     writeBytes(writer, &itemCount, sizeof(uint32_t));
-    writeBytes(writer, data, itemCount * itemSize);
+    if (itemType == CM_TYPE_CHAR) {
+        writeBytes(writer, data, (itemCount - 1) * itemSize);
+        writer->buffer[writer->usedSize] = 0x00;
+        ++writer->usedSize;
+    } else {
+        writeBytes(writer, data, itemCount * itemSize);
+    }
 }
 
 uint32_t cmReadTypedArray(CompositeMessageReader *reader, uint8_t itemType,
@@ -324,6 +335,21 @@ uint32_t cmPeekArraySize(CompositeMessageReader *reader) {
     uint32_t size = *(uint32_t *) &reader->message[reader->readSize + 1];
 
     return size;
+}
+
+uint32_t cmPeekStringLength(CompositeMessageReader *reader) {
+    uint32_t len = cmPeekArraySize(reader);
+    if (reader->firstError != CM_ERROR_NONE)
+        return 0;
+
+    uint8_t typeStored;
+    splitTypeFlag(reader->message[reader->readSize], &typeStored, NULL);
+    if (typeStored != CM_TYPE_CHAR || len == 0) {
+        reader->firstError = CM_ERROR_NO_VALUE;
+        return 0;
+    }
+
+    return len - 1;
 }
 
 void cmWriteVersion(CompositeMessageWriter *writer, uint32_t ver) {

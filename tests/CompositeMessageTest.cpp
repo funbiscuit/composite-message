@@ -271,6 +271,57 @@ SCENARIO("Read message", "[read]") {
         }
     }
 
+    GIVEN("Message with strings") {
+        std::string str1 = "abcd";
+        std::string str2 = "qwerty";
+
+        cmWriteString(&writer, str1.c_str(), str1.size());
+        cmWriteString(&writer, str2.c_str(), str2.size());
+        cmWriteString(&writer, str1.c_str(), str1.size());
+
+        auto reader = cmGetReader(writer.buffer, writer.usedSize);
+
+        WHEN("String length is peeked") {
+            auto length = cmPeekStringLength(&reader);
+            auto size = cmPeekArraySize(&reader);
+
+            THEN("Length is correct") {
+                REQUIRE(length == str1.size());
+            }
+
+            AND_THEN("Size includes null terminator") {
+                REQUIRE(size == length + 1);
+            }
+        }
+
+        WHEN("Strings are read") {
+            std::vector<char> r1(32, 'A');
+            std::vector<char> r2(32, 'A');
+            std::vector<char> r3(32, 'A');
+
+            auto size = cmReadString(&reader, r1.data(), r1.size());
+            r1.resize(size);
+            size = cmReadString(&reader, r2.data(), r2.size());
+            r2.resize(size);
+            size = cmReadString(&reader, r3.data(), r3.size());
+            r3.resize(size);
+
+            THEN("No errors") {
+                REQUIRE(reader.firstError == CM_ERROR_NONE);
+            }AND_THEN("Last byte is null byte") {
+                REQUIRE(r1.back() == '\0');
+                REQUIRE(r2.back() == '\0');
+                REQUIRE(r3.back() == '\0');
+            }
+
+            AND_THEN("Read strings are correct") {
+                REQUIRE_THAT(r1.data(), Catch::Matchers::Equals(str1));
+                REQUIRE_THAT(r2.data(), Catch::Matchers::Equals(str2));
+                REQUIRE_THAT(r3.data(), Catch::Matchers::Equals(str1));
+            }
+        }
+    }
+
     GIVEN("Message with array and inverse endianness") {
         std::vector<uint32_t> dataU32{0, 123, 17, 76234, 2349843723};
         std::vector<uint32_t> data2U32{78, 547, 879, 789674232};
