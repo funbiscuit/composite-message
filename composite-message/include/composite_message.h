@@ -8,8 +8,8 @@
  *
  * Primitive types are represented by 5 bits:
  * - ABCXX      XX represent type length (2^XX bytes), ABC represent type
- *              001 - unsigned int, 010 - signed int, 011 - float, 100 - double
- *              101 - char, 110 - bool:
+ *              001 - unsigned int, 010 - signed int, 011 - float/double
+ *              100 - bool, 101 - char:
  * - 00100      uint8
  * - 01000      int8
  * - 00101      uint16
@@ -19,9 +19,9 @@
  * - 00111      uint64
  * - 01011      int64
  * - 01110      float
- * - 10011      double
+ * - 01111      double
+ * - 10000      bool (1 byte)
  * - 10100      char (1 byte)
- * - 11000      bool (1 byte)
  *
  * Flags:
  * - 0000 0000  End of message

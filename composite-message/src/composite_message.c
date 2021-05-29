@@ -6,9 +6,8 @@
 #define CM_TYPE_UINT    0x04u
 #define CM_TYPE_INT     0x08u
 #define CM_TYPE_FLOAT   0x0Cu
-#define CM_TYPE_DOUBLE  0x10u
+#define CM_TYPE_BOOL    0x10u
 #define CM_TYPE_CHAR    0x14u
-#define CM_TYPE_BOOL    0x18u
 
 #define CM_TYPE_MASK     0x1Cu
 #define CM_TYPE_LEN_MASK 0x03u
@@ -233,12 +232,12 @@ float cmReadF(CompositeMessageReader *reader) {
 }
 
 void cmWriteD(CompositeMessageWriter *writer, double d) {
-    writeValue(writer, &d, sizeof(d), CM_TYPE_DOUBLE);
+    writeValue(writer, &d, sizeof(d), CM_TYPE_FLOAT);
 }
 
 double cmReadD(CompositeMessageReader *reader) {
     double val = 0;
-    readValue(reader, &val, sizeof(val), CM_TYPE_DOUBLE);
+    readValue(reader, &val, sizeof(val), CM_TYPE_FLOAT);
     return val;
 }
 
